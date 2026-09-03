@@ -26,7 +26,7 @@ Records are written by flushing a temporary sibling file and then replacing the 
 ## Timestamp rules
 
 - The client creates a new timestamp only after it observes a genuine eligible-file manifest/content change.
-- Applying a server snapshot must persist the server timestamp and content hash locally. A download must not immediately become a newer local change and upload back to the server.
+- Applying a server snapshot must persist the server timestamp and content hash locally. A download must not immediately become a newer local change and upload back to the server. The client may record its locally migrated automatic-world filename hash against that same server timestamp.
 - Use millisecond-or-better UTC instants in the wire format. Server wins exact ties.
 - The server rejects malformed timestamps and may reject implausibly far-future timestamps.
 

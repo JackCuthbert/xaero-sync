@@ -64,9 +64,9 @@ internal class ClientConfigurationSync(
         }
 
         val snapshot = assembler.finish()
-        WaypointSnapshotFiles.replace(scope.waypointRoot, snapshot)
-        state.record(scope.address, snapshot)
-        localSnapshot = snapshot
+        val applied = WaypointSnapshotFiles.applyDownload(scope.waypointRoot, snapshot)
+        state.record(scope.address, applied)
+        localSnapshot = applied
         incoming = null
         return listOf(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
     }
