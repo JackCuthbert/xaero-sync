@@ -7,6 +7,10 @@ base {
     archivesName.set("xaero-sync-fabric-26.2")
 }
 
+loom {
+    accessWidenerPath.set(file("src/main/resources/xaero-sync.accesswidener"))
+}
+
 dependencies {
     minecraft("com.mojang:minecraft:${libs.versions.minecraft.get()}")
     implementation(libs.fabric.loader)

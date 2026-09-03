@@ -8,6 +8,7 @@
     "Jack Cuthbert"
   ],
   "environment": "client",
+  "accessWidener": "xaero-sync.accesswidener",
   "entrypoints": {
     "client": [
       "io.github.jackcuthbert.xaerosync.client.XaeroSyncClient"
