@@ -15,6 +15,12 @@ The Paper server record is canonical. The winner is selected using `updatedAt`:
 
 This is whole-snapshot newest-wins behavior. If stale local data eventually reconnects with a newer timestamp, it can replace the server record. This is intentional for a server-side backup model and is not a multi-device merge system.
 
+## Persistence format
+
+The shared persistence record is strict versioned JSON containing the timestamp, deterministic content hash, and a Base64 copy of every raw waypoint file. Unknown JSON fields, malformed timestamps, invalid Base64, duplicate paths, ineligible paths, and hash mismatches are rejected. Xaero waypoint lines themselves are opaque bytes: future Xaero fields are preserved unchanged.
+
+Records are written by flushing a temporary sibling file and then replacing the previous record with an atomic move where the filesystem supports it. A missing record represents no stored snapshot; a truncated or corrupt record is an error, never an empty snapshot.
+
 ## Timestamp rules
 
 - The client creates a new timestamp only after it observes a genuine eligible-file manifest/content change.
@@ -50,4 +56,3 @@ The client performs one final hash comparison and uploads only if the snapshot d
 - Server-to-client transfers use the same integrity checks even if their practical payload headroom is larger.
 - Require bounded total payload size, bounded chunk count, bounded path count, and bounded path length. These are safety limits, not player quotas.
 - Never deserialize archive formats or accept paths containing `..`, an absolute path, or a platform separator outside the normalized relative-path format.
-
