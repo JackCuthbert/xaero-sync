@@ -36,7 +36,7 @@ The exact command argument syntax and permission nodes are implementation detail
 Players may omit their own identity. Administrators can append an online player name or UUID to status and backup
 commands. Restore requires the explicit confirmation offered by the clickable prompt and saves the current canonical
 record before replacing it. Console and scripts can use `/xaerosync restore <snapshot> --confirm [player]`.
-`/xaerosync backups [page]` paginates restore points, and `/xsync` is available as a shorter alias. Administrators can
+`/xaerosync backups [page]` paginates restore points. Administrators can
 use `/xaerosync diagnostics <player>` for the exact timestamp, UUID, hash, and storage size; ordinary player output
 does not expose those details.
 
