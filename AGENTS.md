@@ -23,3 +23,10 @@ Apply these rules to every implementation change in this repository.
 - Prefer realistic fixtures for Xaero waypoint files and protocol payloads over mocks that duplicate production implementation details.
 - Run the relevant test suite, formatter, linter, and build checks before considering a feature ready.
 
+## Tooling and validation environment
+
+- Run project and application tooling through the repository's Mise tasks (for example, `mise run verify`, `mise run build`, and `mise run paper`). Do not invoke Gradle or other project-managed tools outside Mise.
+- Global repository and service utilities such as `git` and `gh` may be invoked directly; Mise is for application/toolchain management, not a wrapper for every shell command.
+- Never modify a user-designated protected/reference Minecraft instance. If an instance is needed for testing, ask the user which disposable instance or path to use before changing it.
+- When manual Minecraft, PrismLauncher, or other GUI/window interaction is needed, ask the user to perform it and wait for confirmation. Do not automate GUI interaction or terminate user-run windows/processes.
+- When writing GitHub issues, pull requests, comments, or other user-facing project text, use normal punctuation characters directly. Never emit shell- or language-escaped text such as `\\x27` where an apostrophe (`'`) is intended.
