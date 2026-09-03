@@ -3,8 +3,11 @@ package io.github.jackcuthbert.xaerosync.client
 import io.github.jackcuthbert.xaerosync.shared.ConfigurationProbe
 import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
 import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.impl.networking.RegistrationPayload
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket
@@ -29,8 +32,11 @@ class XaeroSyncClient : ClientModInitializer {
             ConfigurationSyncPayload.TYPE,
             ConfigurationSyncPayload.CODEC,
         )
+        PayloadTypeRegistry.serverboundPlay().register(PlaySyncPayload.TYPE, PlaySyncPayload.CODEC)
+        PayloadTypeRegistry.clientboundPlay().register(PlaySyncPayload.TYPE, PlaySyncPayload.CODEC)
 
         var sync: ClientConfigurationSync? = null
+        var playUpload: ClientPlayUpload? = null
         ClientConfigurationNetworking.registerGlobalReceiver(ConfigurationSyncPayload.TYPE) { payload, context ->
             val responses = runCatching { requireNotNull(sync).receive(SyncMessageCodec.decode(payload.bytes)) }
                 .onFailure { LOGGER.error("Configuration sync failed.", it) }
@@ -46,6 +52,27 @@ class XaeroSyncClient : ClientModInitializer {
             } else {
                 LOGGER.warn("Configuration probe received unsupported version {}.", response.protocolVersion)
             }
+        }
+        ClientPlayNetworking.registerGlobalReceiver(PlaySyncPayload.TYPE) { payload, _ ->
+            runCatching { playUpload?.receive(SyncMessageCodec.decode(payload.bytes)) }
+                .onFailure { LOGGER.error("Safety-net upload failed.", it) }
+        }
+
+        ClientPlayConnectionEvents.JOIN.register { _, sender, client ->
+            val address = client.currentServer?.ip ?: return@register
+            playUpload?.close()
+            playUpload = ClientPlayUpload(
+                XaeroConnectionScope.from(client.gameDirectory.toPath(), address),
+            ) { message ->
+                sender.sendPacket(PlaySyncPayload(SyncMessageCodec.encode(message)))
+            }
+        }
+        ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
+            playUpload?.close()
+            playUpload = null
+        }
+        ClientLifecycleEvents.CLIENT_STOPPING.register {
+            playUpload?.flush()
         }
 
         ClientConfigurationConnectionEvents.START.register { _, client ->

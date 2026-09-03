@@ -12,6 +12,8 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.plugin.messaging.PluginMessageListener
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
 
 /** Paper entry point and configuration-phase compatibility probe. */
 class XaeroSyncPlugin :
@@ -19,9 +21,12 @@ class XaeroSyncPlugin :
     PluginMessageListener,
     Listener {
     private lateinit var repository: PlayerSnapshotRepository
-    private val sessions = java.util.concurrent.ConcurrentHashMap<java.util.UUID, ServerConfigurationSync>()
-    private val completions =
-        java.util.concurrent.ConcurrentHashMap<java.util.UUID, java.util.concurrent.CompletableFuture<Unit>>()
+    private val sessions = ConcurrentHashMap<PlayerConfigurationConnection, ServerConfigurationSync>()
+    private val playUploads = ConcurrentHashMap<Player, ServerPlayUpload>()
+    private val completions = ConcurrentHashMap<PlayerConfigurationConnection, CompletableFuture<Unit>>()
+    private val storageExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(
+        Thread.ofVirtual().name("xaero-sync-storage").factory(),
+    )
 
     override fun onEnable() {
         repository = PlayerSnapshotRepository(dataFolder.toPath())
@@ -30,45 +35,69 @@ class XaeroSyncPlugin :
         server.messenger.registerOutgoingPluginChannel(this, ConfigurationProbe.CHANNEL)
         server.messenger.registerIncomingPluginChannel(this, ConnectionSyncProtocol.CHANNEL, this)
         server.messenger.registerOutgoingPluginChannel(this, ConnectionSyncProtocol.CHANNEL)
+        server.messenger.registerIncomingPluginChannel(this, ConnectionSyncProtocol.PLAY_CHANNEL, this)
+        server.messenger.registerOutgoingPluginChannel(this, ConnectionSyncProtocol.PLAY_CHANNEL)
     }
 
     override fun onDisable() {
+        storageExecutor.close()
         server.messenger.unregisterIncomingPluginChannel(this)
         server.messenger.unregisterOutgoingPluginChannel(this)
     }
 
-    override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) = Unit
+    override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) {
+        if (channel != ConnectionSyncProtocol.PLAY_CHANNEL) return
+        val playerId = player.uniqueId
+        storageExecutor.submit {
+            val upload = playUploads.computeIfAbsent(player) {
+                ServerPlayUpload(playerId, repository) { response ->
+                    server.scheduler.runTask(this) { _ ->
+                        if (player.isOnline) player.sendPluginMessage(this, channel, SyncMessageCodec.encode(response))
+                    }
+                }
+            }
+            if (runCatching { upload.receive(SyncMessageCodec.decode(message)) }.getOrDefault(true)) {
+                playUploads.remove(player)
+            }
+        }
+    }
 
     @EventHandler
     fun onConfigure(event: AsyncPlayerConnectionConfigureEvent) {
         if (ConnectionSyncProtocol.CHANNEL !in event.connection.listeningPluginChannels) return
         val playerId = requireNotNull(event.connection.profile.id)
         runCatching {
-            completions.computeIfAbsent(playerId) { java.util.concurrent.CompletableFuture() }
+            completions.computeIfAbsent(event.connection) { CompletableFuture() }
                 .get(15, java.util.concurrent.TimeUnit.SECONDS)
         }.onFailure { logger.warning("Configuration sync timed out or failed for $playerId.") }
-        completions.remove(playerId)
+        completions.remove(event.connection)
     }
 
     override fun onPluginMessageReceived(channel: String, connection: PlayerConnection, message: ByteArray) {
         val configurationConnection = connection as? PlayerConfigurationConnection
         if (channel == ConnectionSyncProtocol.CHANNEL && configurationConnection != null) {
             val playerId = requireNotNull(configurationConnection.profile.id)
-            val session = sessions.computeIfAbsent(playerId) {
-                ServerConfigurationSync(playerId, repository) { response ->
-                    configurationConnection.sendPluginMessage(
-                        this,
-                        ConnectionSyncProtocol.CHANNEL,
-                        SyncMessageCodec.encode(response),
-                    )
+            storageExecutor.submit {
+                val session = sessions.computeIfAbsent(configurationConnection) {
+                    ServerConfigurationSync(playerId, repository) { response ->
+                        configurationConnection.sendPluginMessage(
+                            this,
+                            ConnectionSyncProtocol.CHANNEL,
+                            SyncMessageCodec.encode(response),
+                        )
+                    }
                 }
-            }
-            val complete = runCatching { session.receive(SyncMessageCodec.decode(message)) }
-                .onFailure { logger.warning("Rejected configuration sync for $playerId: ${it.javaClass.simpleName}") }
-                .getOrDefault(true)
-            if (complete) {
-                sessions.remove(playerId)
-                completions.computeIfAbsent(playerId) { java.util.concurrent.CompletableFuture() }.complete(Unit)
+                val complete = runCatching { session.receive(SyncMessageCodec.decode(message)) }
+                    .onFailure {
+                        logger.warning("Rejected configuration sync for $playerId: ${it.javaClass.simpleName}")
+                    }
+                    .getOrDefault(true)
+                if (complete) {
+                    sessions.remove(configurationConnection)
+                    completions.computeIfAbsent(configurationConnection) {
+                        CompletableFuture()
+                    }.complete(Unit)
+                }
             }
             return
         }

@@ -68,6 +68,13 @@ internal class ServerConfigurationSync(
                 snapshot.updatedAt == metadata.updatedAt &&
                 snapshot.manifest == metadata.manifest,
         )
+        val current = repository.load(playerId)
+        if (current != null && snapshot.updatedAt <= current.updatedAt) {
+            val transfer = SnapshotTransfer.from(current)
+            send(transfer.start)
+            transfer.chunks.forEach(send)
+            return false
+        }
         repository.save(playerId, snapshot)
         send(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
         return true

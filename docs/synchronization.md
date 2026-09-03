@@ -48,7 +48,10 @@ The play channel exists for safety-net uploads and command responses only. It do
 
 ### Disconnect
 
-The client performs one final hash comparison and uploads only if the snapshot differs from the last successful synchronization. Disconnect is best-effort; the watcher is the crash/force-quit safety net.
+Fabric's public play-disconnect event is notification-only and explicitly forbids sending packets. The client therefore flushes one
+final comparison during `CLIENT_STOPPING`, while the play connection is still available, and uses `DISCONNECT` only to release watcher
+resources. A normal return to the server list relies on the debounced watcher and periodic rescan having already uploaded the change.
+Supporting a true pre-disconnect hook would require a mixin, which is outside this project's architecture.
 
 ## Wire rules
 

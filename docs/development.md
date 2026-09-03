@@ -36,7 +36,10 @@ Implement the configuration-phase metadata exchange, chunk transfer, server-wins
 
 ## Milestone 4 — safety-net uploads and recovery
 
-Implement recursive watching, new-directory registration, debounce, periodic rescan, self-write suppression, disconnect upload, snapshots, and recovery commands. Test force-quit/crash simulation, Nether directory creation, duplicate events, partial writes, restore/reconnect, and concurrent joins by the same UUID.
+Implement recursive watching, new-directory registration, debounce, periodic rescan, self-write suppression, graceful client-shutdown
+flush, snapshots, and recovery commands. Test force-quit/crash simulation, Nether directory creation, duplicate events, partial writes,
+restore/reconnect, and concurrent joins by the same UUID. The exact Fabric API has no send-capable pre-disconnect event, so ordinary
+disconnect durability comes from the watcher rather than a final packet.
 
 ## Release criteria
 

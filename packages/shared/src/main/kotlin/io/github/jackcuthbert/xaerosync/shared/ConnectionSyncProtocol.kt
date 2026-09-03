@@ -19,6 +19,7 @@ import java.util.UUID
 
 object ConnectionSyncProtocol {
     const val CHANNEL = "xaero-sync:configuration"
+    const val PLAY_CHANNEL = "xaero-sync:play"
     const val VERSION = 1
 
     // JSON encodes chunk bytes as Base64. This keeps the complete plugin message below Paper's 32,766-byte limit.
