@@ -8,6 +8,8 @@ Xaero Sync is a private-server waypoint backup system consisting of:
 
 Source code is organized under `packages/`: `packages/shared`, `packages/fabric-client`, and `packages/paper-plugin`. The local, Git-ignored Paper compatibility server lives separately at `dev/paper-server`.
 
+For the local PrismLauncher instance, copy `.envrc.example` to `.envrc`, adjust `XAERO_SYNC_PRISM_MODS_DIR` if needed, and run `direnv allow`. Then `mise run copy-client-mod` builds and installs the Fabric mod into that instance's `mods` directory.
+
 It supports Xaero's Minimap Fabric `26.2-26.4.2`. The product is deliberately a backup/sync tool, not a live collaborative waypoint system. A client may join without the mod; the Paper plugin must remain silent for such clients.
 
 ## Specifications

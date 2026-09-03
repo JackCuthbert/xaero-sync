@@ -1,0 +1,3 @@
+# Copy this file to .envrc, then run `direnv allow`.
+# This is intentionally machine-local: PrismLauncher instances are not portable.
+export XAERO_SYNC_PRISM_MODS_DIR="$HOME/Library/Application Support/PrismLauncher/instances/Xaero + Fabric Clean/minecraft/mods"

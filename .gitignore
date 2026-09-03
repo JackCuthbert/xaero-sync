@@ -1,7 +1,9 @@
 .gradle/
 **/build/
 .idea/
+.DS_Store
 *.iml
 run/
 logs/
 dev/paper-server/
+.envrc

@@ -46,6 +46,11 @@ description = "Build and install the Paper plugin into the local development ser
 depends = ["build"]
 run = "cp packages/paper-plugin/build/libs/xaero-sync-paper-26.2-0.1.0-SNAPSHOT.jar dev/paper-server/plugins/xaero-sync-paper-26.2-0.1.0-SNAPSHOT.jar"
 
+[tasks.copy-client-mod]
+description = "Build and install the Fabric client mod into XAERO_SYNC_PRISM_MODS_DIR"
+depends = ["build"]
+run = "test -n \"$XAERO_SYNC_PRISM_MODS_DIR\" && test -d \"$XAERO_SYNC_PRISM_MODS_DIR\" && cp packages/fabric-client/build/libs/xaero-sync-fabric-26.2-0.1.0-SNAPSHOT.jar \"$XAERO_SYNC_PRISM_MODS_DIR/xaero-sync-fabric-26.2-0.1.0-SNAPSHOT.jar\""
+
 [tasks.paper]
 description = "Start the local Paper 26.2 build-121 compatibility server"
 depends = ["copy-paper-plugin"]
