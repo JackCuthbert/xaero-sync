@@ -15,3 +15,17 @@ This records manual evidence for the exact v1 compatibility target: Minecraft `2
 - Platform unit tests cover the Fabric VarInt payload and ordered response-channel registration/probe policy, plus Paper's configuration-only response, malformed payload rejection, and supported-version response.
 
 The target server exposes the automatic world plus the manually seeded default world captured above. If its Xaero sub-world configuration changes later, retain the actual new filenames as fixtures; the recursive `dim%*` and `mw*.txt` predicate is deliberately independent of a specific sub-world identifier.
+
+## Release verification — 2026-09-03
+
+The complete v1 workflow was exercised manually against the pinned versions above using Paper build `121` and two separate PrismLauncher client instances:
+
+- A populated client uploaded waypoint files from Overworld and End, and a fresh client downloaded the same files before entering play. Earlier Nether fixture and discovery coverage confirms the identical sibling-directory handling for `dim%-1`.
+- A waypoint created during play reached the server after the watcher debounce interval. The persisted copy remained available independently of the later client disconnect, covering the force-termination recovery path once debounce has elapsed.
+- Touching `config.txt` did not change the server snapshot hash or timestamp.
+- Restoring an older server snapshot while a client was connected did not change that client's files. Reconnecting replaced its snapshot and removed a deliberately added temporary waypoint.
+- Restore created an automatic pre-restore snapshot, and the `status`, `backup`, `snapshots`, and confirmed `restore` administration commands completed successfully.
+- A client with Xaero Sync disabled joined normally. The server emitted no Xaero Sync probe, timeout, or player-facing message for that connection.
+- Configuration synchronization completed before play without the earlier timeout, and a fresh-client reconnect completed in approximately one second on the local test setup.
+
+Automated wire, validation, persistence, watcher, transfer, and recovery tests remain the reproducible verification source; these observations cover the lifecycle and Xaero integration that require the actual game clients.
