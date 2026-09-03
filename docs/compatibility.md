@@ -1,6 +1,6 @@
 # Target-version compatibility evidence
 
-This records manual evidence for the exact v1 compatibility target: Minecraft `26.2`, Fabric Loader `0.19.5`, Fabric API `0.159.0+26.2`, Xaero Minimap Fabric `26.4.2`, and Paper `26.2` build `121`.
+This records manual evidence for the exact v1 compatibility target: Minecraft `26.2`, Fabric Loader `0.19.3`, Fabric API `0.159.0+26.2`, Xaero Minimap Fabric `26.4.2`, and Paper `26.2` build `121`.
 
 ## Confirmed
 
