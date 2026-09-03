@@ -1,0 +1,7 @@
+.gradle/
+**/build/
+.idea/
+*.iml
+run/
+logs/
+dev/paper-server/
