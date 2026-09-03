@@ -1,5 +1,30 @@
 # Development process
 
+## Commits and releases
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) for changes that
+should appear in a release:
+
+- `fix: prevent stale clients replacing a backup` creates a patch release.
+- `feat: allow importing another player's waypoints` creates a minor release.
+- Add `!` after the type or a `BREAKING CHANGE:` footer for a major release.
+
+Types such as `docs`, `test`, `ci`, and `chore` do not create a release by
+themselves. Scopes are optional, for example `fix(client): ...`.
+
+On each push to `main`, Release Please updates a release pull request containing
+the next version in `gradle.properties` and the generated `CHANGELOG.md`. Merging
+that pull request creates the tag and GitHub release, runs `mise run verify` to
+validate and build both distributable JARs, and attaches them to the release.
+
+The release workflow uses the repository `GITHUB_TOKEN` by default. Repository
+Settings → Actions → General must allow GitHub Actions to create pull requests.
+Resources created with `GITHUB_TOKEN` do not trigger other workflows, so add a
+fine-grained personal access token as the `RELEASE_PLEASE_TOKEN` Actions secret
+when the Release Please pull request must trigger the normal verification
+workflow. Grant that token access only to this repository, with Contents,
+Issues, and Pull requests read/write permissions.
+
 ## Engineering standards
 
 The repository-level [engineering instructions](../AGENTS.md) are mandatory for all implementation work. In particular:
