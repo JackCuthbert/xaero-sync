@@ -7,7 +7,6 @@ commands:
   xaerosync:
     description: Inspect and recover Xaero waypoint snapshots.
     usage: /xaerosync [status|backup|backups|restore|diagnostics|help]
-    aliases: [xsync]
 permissions:
   xaerosync.command:
     description: Use Xaero Sync commands for your own waypoint record.
