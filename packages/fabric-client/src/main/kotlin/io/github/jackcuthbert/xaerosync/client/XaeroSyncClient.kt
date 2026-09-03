@@ -4,6 +4,7 @@ import io.github.jackcuthbert.xaerosync.shared.ConfigurationProbe
 import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
@@ -60,16 +61,24 @@ class XaeroSyncClient : ClientModInitializer {
 
         ClientPlayConnectionEvents.JOIN.register { _, sender, client ->
             val address = client.currentServer?.ip ?: return@register
+            val appliedDownload = sync?.applyPendingAutomaticWorldDownload()
             playUpload?.close()
             playUpload = ClientPlayUpload(
                 XaeroConnectionScope.from(client.gameDirectory.toPath(), address),
             ) { message ->
                 sender.sendPacket(PlaySyncPayload(SyncMessageCodec.encode(message)))
             }
+            appliedDownload?.let(requireNotNull(playUpload)::acknowledgeDownloaded)
         }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             playUpload?.close()
             playUpload = null
+            sync = null
+        }
+        ClientTickEvents.END_CLIENT_TICK.register {
+            sync?.applyPendingAutomaticWorldDownload()?.let { snapshot ->
+                playUpload?.acknowledgeDownloaded(snapshot)
+            }
         }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
             playUpload?.flush()

@@ -75,6 +75,12 @@ object WaypointSnapshotFiles {
         return applied
     }
 
+    fun hasAutomaticWorldConfiguration(root: Path): Boolean = readAutomaticWorldId(root) != null
+
+    fun hasLegacyAutomaticWorldFile(snapshot: WaypointSnapshot): Boolean = snapshot.files.any { file ->
+        LEGACY_AUTOMATIC_WORLD_FILENAME.matches(file.path.substringAfterLast('/'))
+    }
+
     fun newestModifiedAt(root: Path, snapshot: WaypointSnapshot): Instant =
         snapshot.files.maxOfOrNull { file -> Files.getLastModifiedTime(root.resolve(file.path)).toInstant() }
             ?: Instant.EPOCH

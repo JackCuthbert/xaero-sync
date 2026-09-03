@@ -16,6 +16,7 @@ internal class ClientConfigurationSync(
     private val state = ClientSyncStateStore(scope.sidecarPath)
     private var localSnapshot: WaypointSnapshot? = null
     private var incoming: SnapshotTransferAssembler? = null
+    private var pendingAutomaticWorldDownload: WaypointSnapshot? = null
 
     fun start(): SyncMessage.ClientMetadata {
         val snapshot = state.observe(scope.address, scope.waypointRoot, clock.instant())
@@ -64,11 +65,20 @@ internal class ClientConfigurationSync(
         }
 
         val snapshot = assembler.finish()
-        val applied = WaypointSnapshotFiles.applyDownload(scope.waypointRoot, snapshot)
-        state.record(scope.address, applied)
-        localSnapshot = applied
+        if (WaypointSnapshotFiles.hasLegacyAutomaticWorldFile(snapshot)) {
+            pendingAutomaticWorldDownload = snapshot
+        } else {
+            applyDownload(snapshot)
+        }
         incoming = null
         return listOf(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
+    }
+
+    fun applyPendingAutomaticWorldDownload(): WaypointSnapshot? {
+        val snapshot = pendingAutomaticWorldDownload ?: return null
+        if (!WaypointSnapshotFiles.hasAutomaticWorldConfiguration(scope.waypointRoot)) return null
+        pendingAutomaticWorldDownload = null
+        return applyDownload(snapshot)
     }
 
     private fun acceptUpload(message: SyncMessage.TransferAccepted): List<SyncMessage> {
@@ -76,6 +86,13 @@ internal class ClientConfigurationSync(
         require(local.hash == message.hash && local.updatedAt == message.updatedAt)
         state.record(scope.address, local)
         return emptyList()
+    }
+
+    private fun applyDownload(snapshot: WaypointSnapshot): WaypointSnapshot {
+        val applied = WaypointSnapshotFiles.applyDownload(scope.waypointRoot, snapshot)
+        state.record(scope.address, applied)
+        localSnapshot = applied
+        return applied
     }
 
     private fun reject(category: String) = listOf(SyncMessage.TransferRejected(category))

@@ -44,6 +44,8 @@ internal class ClientPlayUpload(private val scope: XaeroConnectionScope, private
 
     fun flush() = monitor.flush()
 
+    fun acknowledgeDownloaded(snapshot: WaypointSnapshot) = monitor.acknowledge(snapshot.hash)
+
     override fun close() = monitor.close()
 
     @Synchronized
