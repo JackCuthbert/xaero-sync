@@ -3,6 +3,7 @@ package io.github.jackcuthbert.xaerosync.paper
 import io.github.jackcuthbert.xaerosync.shared.ConfigurationProbe
 import io.github.jackcuthbert.xaerosync.shared.ConnectionSyncProtocol
 import io.github.jackcuthbert.xaerosync.shared.PlayerSnapshotRepository
+import io.github.jackcuthbert.xaerosync.shared.SnapshotRetention
 import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
 import io.papermc.paper.connection.PlayerConfigurationConnection
 import io.papermc.paper.connection.PlayerConnection
@@ -29,7 +30,13 @@ class XaeroSyncPlugin :
     )
 
     override fun onEnable() {
-        repository = PlayerSnapshotRepository(dataFolder.toPath())
+        saveDefaultConfig()
+        repository = PlayerSnapshotRepository(
+            dataFolder.toPath(),
+            retention = snapshotRetention(),
+        ) { path, error ->
+            logger.warning("Could not read or remove snapshot $path: ${error.message}")
+        }
         val command = requireNotNull(getCommand("xaerosync"))
         val handler = XaeroSyncCommand(this, repository)
         command.setExecutor(handler)
@@ -51,6 +58,20 @@ class XaeroSyncPlugin :
 
     internal fun runStorage(operation: () -> Unit) {
         storageExecutor.submit(operation)
+    }
+
+    private fun snapshotRetention(): SnapshotRetention {
+        val configured = config.getInt("snapshots.max-per-player", SnapshotRetention.DEFAULT_MAXIMUM_PER_PLAYER)
+        return when {
+            configured == -1 -> SnapshotRetention.UNLIMITED
+            configured > 0 -> SnapshotRetention(configured)
+            else -> {
+                logger.warning(
+                    "snapshots.max-per-player must be positive or -1; using ${SnapshotRetention.DEFAULT_MAXIMUM_PER_PLAYER}.",
+                )
+                SnapshotRetention.DEFAULT
+            }
+        }
     }
 
     override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) {

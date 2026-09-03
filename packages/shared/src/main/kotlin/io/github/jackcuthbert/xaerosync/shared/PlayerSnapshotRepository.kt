@@ -8,7 +8,12 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /** Server-owned snapshot records, addressed only by the authenticated player's UUID. */
-class PlayerSnapshotRepository(private val dataDirectory: Path, private val clock: Clock = Clock.systemUTC()) {
+class PlayerSnapshotRepository(
+    private val dataDirectory: Path,
+    private val clock: Clock = Clock.systemUTC(),
+    private val retention: SnapshotRetention = SnapshotRetention.DEFAULT,
+    private val onUnreadableSnapshot: (Path, Exception) -> Unit = { _, _ -> },
+) {
     private val playerLocks = ConcurrentHashMap<UUID, Any>()
 
     fun load(playerId: UUID): WaypointSnapshot? = synchronized(lockFor(playerId)) {
@@ -31,6 +36,7 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
             snapshots.sumOf {
                 it.bytes
             },
+            retention.maximumPerPlayer,
         )
     }
 
@@ -83,13 +89,16 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
         val directory = snapshotDirectory(playerId)
         Files.createDirectories(directory)
         val createdAt = clock.instant()
-        val stem = "${createdAt.epochSecond}-${snapshot.hash.take(12)}"
+        val stem = "${createdAt.toEpochMilli()}-${snapshot.hash.take(12)}"
         var id = stem
         var suffix = 1
-        while (Files.exists(snapshotPath(playerId, id))) id = "$stem-${suffix++}"
+        while (Files.exists(snapshotPath(playerId, id))) id = "$stem-${(suffix++).toString().padStart(6, '0')}"
         val path = snapshotPath(playerId, id)
         AtomicSnapshotStore(path).save(snapshot)
-        return StoredSnapshot(id, snapshot.hash, snapshot.updatedAt, createdAt, snapshot.files.size, Files.size(path))
+        val stored =
+            StoredSnapshot(id, snapshot.hash, snapshot.updatedAt, createdAt, snapshot.files.size, Files.size(path))
+        pruneSnapshotsUnlocked(playerId)
+        return stored
     }
 
     private fun listSnapshotsUnlocked(playerId: UUID): List<StoredSnapshot> {
@@ -98,19 +107,36 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
         return Files.list(directory).use { paths ->
             paths.iterator().asSequence()
                 .filter { it.fileName.toString().endsWith(".json") }
-                .map { path ->
-                    val snapshot = requireNotNull(AtomicSnapshotStore(path).load())
-                    StoredSnapshot(
-                        path.fileName.toString().removeSuffix(".json"),
-                        snapshot.hash,
-                        snapshot.updatedAt,
-                        snapshotCreatedAt(path),
-                        snapshot.files.size,
-                        Files.size(path),
-                    )
+                .mapNotNull { path ->
+                    try {
+                        val snapshot = requireNotNull(AtomicSnapshotStore(path).load())
+                        StoredSnapshot(
+                            path.fileName.toString().removeSuffix(".json"),
+                            snapshot.hash,
+                            snapshot.updatedAt,
+                            snapshotCreatedAt(path),
+                            snapshot.files.size,
+                            Files.size(path),
+                        )
+                    } catch (error: Exception) {
+                        onUnreadableSnapshot(path, error)
+                        null
+                    }
                 }
-                .sortedByDescending { it.id }
+                .sortedWith(compareByDescending<StoredSnapshot> { it.createdAt }.thenByDescending { it.id })
                 .toList()
+        }
+    }
+
+    private fun pruneSnapshotsUnlocked(playerId: UUID) {
+        val maximum = retention.maximumPerPlayer ?: return
+        listSnapshotsUnlocked(playerId).drop(maximum).forEach { snapshot ->
+            val path = snapshotPath(playerId, snapshot.id)
+            try {
+                Files.deleteIfExists(path)
+            } catch (error: Exception) {
+                onUnreadableSnapshot(path, error)
+            }
         }
     }
 
@@ -120,7 +146,9 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
         snapshotDirectory(playerId).resolve("$snapshotId.json")
 
     private fun snapshotCreatedAt(path: Path): Instant =
-        path.fileName.toString().substringBefore('-').toLongOrNull()?.let(Instant::ofEpochSecond)
+        path.fileName.toString().substringBefore('-').toLongOrNull()?.let { timestamp ->
+            if (timestamp.toString().length > 10) Instant.ofEpochMilli(timestamp) else Instant.ofEpochSecond(timestamp)
+        }
             ?: Files.getLastModifiedTime(path).toInstant()
 
     private companion object {
@@ -146,4 +174,5 @@ data class PlayerSnapshotStatus(
     val canonicalBytes: Long,
     val snapshotCount: Int,
     val snapshotBytes: Long,
+    val snapshotRetentionLimit: Int?,
 )
