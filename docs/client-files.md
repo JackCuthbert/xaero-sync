@@ -1,0 +1,48 @@
+# Client waypoint files
+
+## Xaero layout observed for the target version
+
+For a server connection, Xaero Minimap stores data beneath a path like:
+
+```text
+xaero/minimap/Multiplayer_example.invalid/
+├── config.txt                         # ignore
+├── dim%0/mw$default_1.txt             # Overworld waypoint set
+└── dim%-1/mw$default_1.txt            # Nether waypoint set
+```
+
+Observed waypoint files begin with a Xaero header and records such as:
+
+```text
+#waypoint:name:initials:x:y:z:color:disabled:type:set:rotate_on_tp:tp_yaw:visibility_type:destination
+waypoint:Test Waypoint:T:-4843:51:14332:1:false:0:gui.xaero_default:false:0:0:false
+```
+
+Dimensions and Xaero sub-worlds are separate concepts. The client must preserve all eligible waypoint files, including any additional dimension or sub-world variants Xaero creates.
+
+## Inclusion rule
+
+Starting at the current connection root, recursively include a file only when all conditions hold:
+
+1. its normalized relative path is below a `dim%*` directory;
+2. its filename matches `mw$*.txt`; and
+3. its contents carry Xaero's waypoint header or a valid `waypoint:` record.
+
+`config.txt` is always excluded. All other files, including Xaero World Map data, are excluded. Preserve the selected files' relative paths and bytes exactly; do not parse, normalize, reorder, or rewrite waypoint lines.
+
+The observed Overworld and Nether files are retained as test fixtures in `packages/shared/src/test/resources/fixtures/xaero-minimap`. The exact tree and inclusion predicate must still be re-checked against a clean target-version client, including the End and any sub-world variants. Any broadened pattern needs a fixture and an explicit specification update.
+
+## Snapshot creation and application
+
+- Sort manifest paths deterministically.
+- Hash the relative path and raw byte content of every included file with an unambiguous length-prefixed encoding.
+- Store a local sidecar outside the Xaero directory with the last synchronized hash and server timestamp.
+- Write received files atomically: write a temporary sibling, flush, then rename. Remove only previously managed eligible files absent from the received manifest.
+- Never modify `config.txt` or unrelated files/directories.
+- Suppress watcher events caused by the mod's own writes using the expected hash/manifest, not timing alone.
+
+## File watcher
+
+Watch the entire connection root recursively. When Xaero creates a directory such as `dim%-1`, register it for watching immediately. Also rescan the complete manifest periodically: recursive watch registration can miss directory creation or platform-specific events.
+
+Debounce bursts of create/modify/delete events. An upload begins only after a stable rescan produces a content hash different from the last successful sync hash. Files that are temporarily incomplete must be retried on the next debounce/rescan instead of being uploaded as a partial snapshot.
