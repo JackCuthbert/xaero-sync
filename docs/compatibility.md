@@ -6,13 +6,14 @@ This records manual evidence for the exact v1 compatibility target: Minecraft `2
 
 - Xaero creates `dim%0/mw$default_1.txt` for Overworld waypoints.
 - Xaero creates the sibling `dim%-1/mw$default_1.txt` for Nether waypoints.
+- On the clean localhost connection, Xaero created `dim%0/mw0,1,0_2.txt` for the automatic Overworld. Its `mw0,1,0` prefix matched the unsynced `config.txt` value `defaultMultiworldId:mw0,1,0`.
 - `config.txt` is connection-local minimap configuration and is excluded.
 - The Fabric and Paper artifacts load on the pinned client and server without entry-point errors.
 - The complete configuration probe round trip succeeds before world entry on Paper `26.2` build `121`: the server received it before its join message at `16:16:34`, and the client received the response on its Netty configuration thread at `16:21:29`.
+- A pre-seeded `mw$default_1.txt` was visible after joining without mixins, proving pre-join loading. Because its identifier did not match the connection's current automatic-world identifier, Xaero correctly displayed it as a separate non-automatic sub-world.
 - Platform unit tests cover the Fabric VarInt payload and ordered response-channel registration/probe policy, plus Paper's configuration-only response, malformed payload rejection, and supported-version response.
 
 ## Manual checks still required
 
-- Confirm the pre-seeded `Xaero Sync Probe` waypoint is visible after joining, proving Xaero reads a pre-join file replacement without mixins.
 - Create an End waypoint with the target Xaero build and replace the synthetic End test fixture with the observed bytes.
 - If the target server exposes additional Xaero sub-world choices, create one waypoint in each and retain their actual filenames as fixtures. The recursive `dim%*/mw$*.txt` predicate already includes such files, but the compatibility evidence must reflect what the target server actually exposes.
