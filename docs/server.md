@@ -33,10 +33,13 @@ All commands are player commands unless an administrator is acting on a named UU
 
 The exact command argument syntax and permission nodes are implementation details, but destructive restore must require a confirmation step or explicit confirmation flag.
 
+The implemented syntax is `/xaerosync <status|backup|snapshots> [uuid]` and
+`/xaerosync restore <snapshot> confirm [uuid]`. Players may omit their own UUID. Targeting another UUID requires
+`xaerosync.admin`; restore always requires the literal `confirm` argument and tells an online target to reconnect.
+
 ## Failure behavior
 
 - Invalid payloads, invalid manifests, unsupported versions, failed hashes, and oversized transfers are rejected without altering storage.
 - A failed client download/application must not cause the client to acknowledge sync.
 - Server file I/O occurs off the main server thread; Bukkit/Paper player interactions return to the correct scheduler/thread.
 - The server logs UUID, operation, hash prefix, and failure category, never waypoint contents by default.
-
