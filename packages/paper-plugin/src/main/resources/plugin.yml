@@ -6,7 +6,7 @@ description: Back up Xaero's Minimap waypoints to this Paper server.
 commands:
   xaerosync:
     description: Inspect and recover Xaero waypoint snapshots.
-    usage: /xaerosync [status|backup|backups|restore|diagnostics|help]
+    usage: /xaerosync [status|backup|backups|replace|restore|diagnostics|help]
 permissions:
   xaerosync.command:
     description: Use Xaero Sync commands for your own waypoint record.
@@ -14,3 +14,6 @@ permissions:
   xaerosync.admin:
     description: Use Xaero Sync commands for another player's UUID.
     default: op
+  xaerosync.replace:
+    description: Replace your waypoint backup with another player's backup.
+    default: true

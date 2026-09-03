@@ -29,6 +29,7 @@ All commands are player commands unless an administrator is acting on a named UU
 - `/xaerosync` or `/xaerosync status` — show a player's backup status and clickable recovery actions.
 - `/xaerosync backup` — write a named or timestamped snapshot of the current canonical record.
 - `/xaerosync backups` — list readable, clickable restore points. `/xaerosync snapshots` remains as a compatibility alias.
+- `/xaerosync replace <player>` — preview and, after confirmation, replace the caller's canonical set with a known player's set. The caller's existing set is saved as a restore point first.
 - `/xaerosync restore <snapshot>` — snapshot the current canonical record, restore the selected record, then instruct the player to reconnect. It never silently replaces waypoint files during live play.
 
 The exact command argument syntax and permission nodes are implementation details, but destructive restore must require a confirmation step or explicit confirmation flag.
@@ -39,6 +40,10 @@ record before replacing it. Console and scripts can use `/xaerosync restore <sna
 `/xaerosync backups [page]` paginates restore points. Administrators can
 use `/xaerosync diagnostics <player>` for the exact timestamp, UUID, hash, and storage size; ordinary player output
 does not expose those details.
+
+Replacing from another player requires `xaerosync.replace` (granted by default for this trusted-server feature), previews
+the source's dimensions, files, waypoint count, and timestamp, and requires `--confirm`. The replacement receives a new
+server timestamp so the existing configuration sync downloads it only when the caller reconnects.
 
 ## Failure behavior
 

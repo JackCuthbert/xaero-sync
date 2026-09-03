@@ -55,7 +55,26 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
         restored
     }
 
+    fun replace(playerId: UUID, sourcePlayerId: UUID): ReplacementResult = withPlayerLocks(playerId, sourcePlayerId) {
+        require(playerId != sourcePlayerId) { "Choose another player's waypoint backup." }
+        val source = requireNotNull(storeFor(sourcePlayerId).load()) { "Source player has no waypoint backup." }
+        val previous = storeFor(playerId).load()
+        val backup = previous?.let { backupUnlocked(playerId, it) }
+        val replacement = WaypointSnapshot.create(source.files, clock.instant())
+        storeFor(playerId).save(replacement)
+        ReplacementResult(replacement, backup)
+    }
+
     private fun lockFor(playerId: UUID): Any = playerLocks.computeIfAbsent(playerId) { Any() }
+
+    private fun <T> withPlayerLocks(firstPlayerId: UUID, secondPlayerId: UUID, operation: () -> T): T {
+        val (first, second) = listOf(firstPlayerId, secondPlayerId).sortedBy(UUID::toString)
+        return synchronized(lockFor(first)) {
+            synchronized(lockFor(second)) {
+                operation()
+            }
+        }
+    }
 
     private fun storeFor(playerId: UUID): AtomicSnapshotStore =
         AtomicSnapshotStore(dataDirectory.resolve("players").resolve("$playerId.json"))
@@ -117,6 +136,8 @@ data class StoredSnapshot(
     val fileCount: Int,
     val bytes: Long,
 )
+
+data class ReplacementResult(val snapshot: WaypointSnapshot, val previousBackup: StoredSnapshot?)
 
 data class PlayerSnapshotStatus(
     val canonicalHash: String?,
