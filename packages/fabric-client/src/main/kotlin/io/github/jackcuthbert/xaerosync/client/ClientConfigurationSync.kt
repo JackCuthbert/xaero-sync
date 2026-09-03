@@ -32,6 +32,7 @@ internal class ClientConfigurationSync(
         return SyncMessage.ClientMetadata(SnapshotMetadata.from(snapshot))
     }
 
+    @Synchronized
     fun receive(message: SyncMessage): List<SyncMessage> = try {
         when (message) {
             SyncMessage.UploadRequired -> upload()
@@ -89,16 +90,19 @@ internal class ClientConfigurationSync(
         return listOf(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
     }
 
+    @Synchronized
     fun applyPendingAutomaticWorldDownload(): WaypointSnapshot? {
         val snapshot = pendingAutomaticWorldDownload ?: return null
         if (!WaypointSnapshotFiles.hasAutomaticWorldConfiguration(scope.waypointRoot)) return null
         pendingAutomaticWorldDownload = null
         return applyDownload(snapshot).also {
             LOGGER.info(
-                "Applied deferred automatic-world download for {}: {} file(s), hash={}; reconnect required.",
+                "Applied deferred automatic-world download for {}: {} file(s), sourceHash={}, localHash={}; " +
+                    "reconnect required.",
                 scope.address,
                 it.files.size,
                 snapshot.hash.take(12),
+                it.hash.take(12),
             )
         }
     }
