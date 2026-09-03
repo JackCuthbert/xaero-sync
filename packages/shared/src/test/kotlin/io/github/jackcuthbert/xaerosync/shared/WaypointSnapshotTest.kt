@@ -14,7 +14,10 @@ class WaypointSnapshotTest {
         val timestamp = Instant.parse("2026-09-03T05:00:00.123Z")
         val first = WaypointSnapshot.create(
             listOf(
-                WaypointFile("dim%1/mw\$default_1.txt", fixture("dim%1/mw\$default_1.txt")),
+                WaypointFile(
+                    "dim%1/mw0,1,0_1.txt",
+                    fixture("dim%1/mw0,1,0_1.txt", "Multiplayer_localhost"),
+                ),
                 WaypointFile("dim%0/mw\$default_1.txt", fixture("dim%0/mw\$default_1.txt")),
                 WaypointFile("dim%-1/mw\$default_1.txt", fixture("dim%-1/mw\$default_1.txt")),
             ),
@@ -24,7 +27,7 @@ class WaypointSnapshotTest {
 
         assertEquals(first.hash, reordered.hash)
         assertEquals(
-            listOf("dim%-1/mw\$default_1.txt", "dim%0/mw\$default_1.txt", "dim%1/mw\$default_1.txt"),
+            listOf("dim%-1/mw\$default_1.txt", "dim%0/mw\$default_1.txt", "dim%1/mw0,1,0_1.txt"),
             first.manifest.map { it.path },
         )
     }
@@ -68,12 +71,13 @@ class WaypointSnapshotTest {
 
     @Test
     fun `defensively copies waypoint content`() {
-        val contents = fixture("dim%1/mw\$default_1.txt")
-        val snapshot = WaypointSnapshot.create(listOf(WaypointFile("dim%1/mw\$default_1.txt", contents)), Instant.EPOCH)
+        val path = "dim%1/mw0,1,0_1.txt"
+        val contents = fixture(path, "Multiplayer_localhost")
+        val snapshot = WaypointSnapshot.create(listOf(WaypointFile(path, contents)), Instant.EPOCH)
         contents[0] = '!'.code.toByte()
         snapshot.files.single().contents[0] = '!'.code.toByte()
 
-        assertContentEquals(fixture("dim%1/mw\$default_1.txt"), snapshot.files.single().contents)
+        assertContentEquals(fixture(path, "Multiplayer_localhost"), snapshot.files.single().contents)
     }
 
     @Test
@@ -126,7 +130,8 @@ class WaypointSnapshotTest {
         "#waypoint:name\nwaypoint:Test:T:0:64:0:1:false:0:gui.xaero_default:false:0:0:false$suffix".toByteArray(),
     )
 
-    private fun fixture(relativePath: String): ByteArray = requireNotNull(
-        javaClass.getResourceAsStream("/fixtures/xaero-minimap/Multiplayer_mc.cloud.jckcthbrt.io/$relativePath"),
-    ).readBytes()
+    private fun fixture(relativePath: String, connection: String = "Multiplayer_mc.cloud.jckcthbrt.io"): ByteArray =
+        requireNotNull(
+            javaClass.getResourceAsStream("/fixtures/xaero-minimap/$connection/$relativePath"),
+        ).readBytes()
 }

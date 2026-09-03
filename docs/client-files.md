@@ -11,7 +11,7 @@ xaero/minimap/Multiplayer_mc.cloud.jckcthbrt.io/
 └── dim%-1/mw$default_1.txt            # Nether waypoint set
 ```
 
-The exact target build also generated `dim%0/mw0,1,0_2.txt` for the currently detected automatic Overworld. The `mw0,1,0` portion matched `defaultMultiworldId` in the connection's `config.txt`, while `_2` matched Xaero's displayed sub-world number. A pre-seeded `mw$default_1.txt` remained visible but was treated as a separate, non-automatic sub-world. Filenames must therefore be preserved exactly; `$default` is not a universal marker for the active world.
+The exact target build also generated `dim%0/mw0,1,0_2.txt` for the currently detected automatic Overworld and `dim%1/mw0,1,0_1.txt` for the automatic End. The `mw0,1,0` portion matched `defaultMultiworldId` in the connection's `config.txt`; the numeric suffix is assigned independently per dimension. A pre-seeded `mw$default_1.txt` remained visible but was treated as a separate, non-automatic sub-world. Filenames must therefore be preserved exactly; `$default` is not a universal marker for the active world.
 
 Observed waypoint files begin with a Xaero header and records such as:
 
@@ -32,7 +32,7 @@ Starting at the current connection root, recursively include a file only when al
 
 `config.txt` is always excluded. All other files, including Xaero World Map data, are excluded. Preserve the selected files' relative paths and bytes exactly; do not parse, normalize, reorder, or rewrite waypoint lines.
 
-The observed default Overworld, Nether, and detected automatic-Overworld files are retained as test fixtures in `packages/shared/src/test/resources/fixtures/xaero-minimap`. The exact tree and inclusion predicate must still be re-checked against a clean target-version client in the End. Any broadened pattern needs a fixture and an explicit specification update.
+The observed default Overworld, Nether, detected automatic-Overworld, and automatic-End files are retained as test fixtures in `packages/shared/src/test/resources/fixtures/xaero-minimap`. Any broadened pattern needs a fixture and an explicit specification update.
 
 ## Snapshot creation and application
 
