@@ -9,8 +9,9 @@ import kotlin.test.assertFailsWith
 class SnapshotJsonCodecTest {
     @Test
     fun `round trips raw waypoint records including unknown Xaero fields`() {
+        val path = "dim%0/mw\$unknown-fields_1.txt"
         val snapshot = WaypointSnapshot.create(
-            listOf(WaypointFile("dim%1/mw\$default_1.txt", fixture("dim%1/mw\$default_1.txt"))),
+            listOf(WaypointFile(path, fixture(path, "synthetic"))),
             Instant.parse("2026-09-03T05:00:00.123Z"),
         )
 
@@ -62,7 +63,8 @@ class SnapshotJsonCodecTest {
         }
     }
 
-    private fun fixture(relativePath: String): ByteArray = requireNotNull(
-        javaClass.getResourceAsStream("/fixtures/xaero-minimap/Multiplayer_example.invalid/$relativePath"),
-    ).readBytes()
+    private fun fixture(relativePath: String, connection: String = "Multiplayer_example.invalid"): ByteArray =
+        requireNotNull(
+            javaClass.getResourceAsStream("/fixtures/xaero-minimap/$connection/$relativePath"),
+        ).readBytes()
 }
