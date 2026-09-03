@@ -3,3 +3,15 @@ version: ${version}
 main: io.github.jackcuthbert.xaerosync.paper.XaeroSyncPlugin
 api-version: '26.2'
 description: Back up Xaero's Minimap waypoints to this Paper server.
+commands:
+  xaerosync:
+    description: Inspect and recover Xaero waypoint snapshots.
+    usage: /xaerosync <status|backup|snapshots|restore>
+    permission: xaerosync.command
+permissions:
+  xaerosync.command:
+    description: Use Xaero Sync commands for your own waypoint record.
+    default: true
+  xaerosync.admin:
+    description: Use Xaero Sync commands for another player's UUID.
+    default: op

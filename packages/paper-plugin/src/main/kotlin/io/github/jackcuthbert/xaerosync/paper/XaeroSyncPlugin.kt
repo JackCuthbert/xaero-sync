@@ -30,6 +30,7 @@ class XaeroSyncPlugin :
 
     override fun onEnable() {
         repository = PlayerSnapshotRepository(dataFolder.toPath())
+        requireNotNull(getCommand("xaerosync")).setExecutor(XaeroSyncCommand(this, repository))
         server.pluginManager.registerEvents(this, this)
         server.messenger.registerIncomingPluginChannel(this, ConfigurationProbe.CHANNEL, this)
         server.messenger.registerOutgoingPluginChannel(this, ConfigurationProbe.CHANNEL)
@@ -43,6 +44,10 @@ class XaeroSyncPlugin :
         storageExecutor.close()
         server.messenger.unregisterIncomingPluginChannel(this)
         server.messenger.unregisterOutgoingPluginChannel(this)
+    }
+
+    internal fun runStorage(operation: () -> Unit) {
+        storageExecutor.submit(operation)
     }
 
     override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) {
