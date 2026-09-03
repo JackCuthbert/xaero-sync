@@ -125,6 +125,7 @@ class XaeroSyncCommandTest {
         assertContains(output, snapshot.hash.take(12))
         assertContains(output, snapshot.updatedAt.toString())
         assertContains(output, "Canonical: 1 files")
+        assertContains(output, "Retention: 10 restore points per player")
     }
 
     @Test

@@ -1,0 +1,3 @@
+snapshots:
+  # Maximum restore points saved per player. Set to -1 for unlimited retention.
+  max-per-player: 10

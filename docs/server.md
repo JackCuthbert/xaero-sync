@@ -20,7 +20,7 @@ Each player record includes:
 
 Never use player names as record identifiers. File writes are serialized per UUID and atomic: write and flush a temporary sibling, then atomically rename it into place. Failed writes leave the old canonical record untouched.
 
-Before `/xaerosync restore` replaces a record, create an automatic snapshot of the current canonical record. Retention policy is intentionally unrestricted in v1; expose total usage in status/logging so operators can add retention later.
+Before `/xaerosync restore` replaces a record, create an automatic snapshot of the current canonical record. Keep the newest 10 restore points per player by default, including manual backups and automatic pre-restore backups. Server operators can set `snapshots.max-per-player` in `plugins/XaeroSync/config.yml` to a positive maximum or `-1` for unlimited retention.
 
 ## Commands
 

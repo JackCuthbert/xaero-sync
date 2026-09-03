@@ -147,6 +147,8 @@ internal class XaeroSyncCommand(
                 NamedTextColor.GRAY,
             ),
         )
+        val retention = status.snapshotRetentionLimit?.toString() ?: "unlimited"
+        reply(sender, Component.text("Retention: $retention restore points per player", NamedTextColor.GRAY))
     }
 
     private fun backup(sender: CommandSender, target: TargetPlayer) {
