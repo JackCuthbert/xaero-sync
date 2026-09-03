@@ -2,7 +2,7 @@ package io.github.jackcuthbert.xaerosync.shared
 
 /** Selects Xaero Minimap waypoint files without interpreting or rewriting their records. */
 object WaypointFileSelector {
-    private val waypointFilename = Regex("""mw\$.*\.txt""")
+    private val waypointFilename = Regex("""mw.*\.txt""")
     private val windowsAbsolutePath = Regex("""^[A-Za-z]:/.*""")
 
     fun isEligible(relativePath: String, contents: ByteArray): Boolean {

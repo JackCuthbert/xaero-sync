@@ -6,7 +6,7 @@ import kotlin.test.assertTrue
 
 class WaypointFileSelectorTest {
     @Test
-    fun `includes observed overworld and nether waypoint fixtures`() {
+    fun `includes observed default and detected-world waypoint filenames`() {
         assertTrue(
             WaypointFileSelector.isEligible(
                 "dim%0/mw\$default_1.txt",
@@ -19,11 +19,23 @@ class WaypointFileSelectorTest {
                 fixture("dim%-1/mw\$default_1.txt"),
             ),
         )
+        assertTrue(
+            WaypointFileSelector.isEligible(
+                "dim%0/mw0,1,0_2.txt",
+                fixture("dim%0/mw0,1,0_2.txt", "Multiplayer_localhost"),
+            ),
+        )
     }
 
     @Test
     fun `excludes minimap configuration and non-waypoint files`() {
         assertFalse(WaypointFileSelector.isEligible("config.txt", fixture("config.txt")))
+        assertFalse(
+            WaypointFileSelector.isEligible(
+                "config.txt",
+                fixture("config.txt", "Multiplayer_localhost"),
+            ),
+        )
         assertFalse(
             WaypointFileSelector.isEligible(
                 "dim%0/notes.txt",
@@ -64,8 +76,9 @@ class WaypointFileSelectorTest {
         assertFalse(WaypointFileSelector.isEligible("C:\\dim%0\\mw\$default_1.txt", waypoint))
     }
 
-    private fun fixture(relativePath: String): ByteArray = requireNotNull(
-        javaClass.getResourceAsStream("/fixtures/xaero-minimap/Multiplayer_example.invalid/$relativePath"),
-    )
-        .readBytes()
+    private fun fixture(relativePath: String, connection: String = "Multiplayer_example.invalid"): ByteArray =
+        requireNotNull(
+            javaClass.getResourceAsStream("/fixtures/xaero-minimap/$connection/$relativePath"),
+        )
+            .readBytes()
 }
