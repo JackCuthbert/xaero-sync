@@ -50,7 +50,8 @@ class WaypointSnapshotFilesTest {
         write("config.txt", "defaultMultiworldId:mw0,1,0")
         write(
             "dim%0/mw0,1,0_2.txt",
-            "$HEADER\nwaypoint:Local:L:1:2:3:1:false:0:set:false:0:0:false",
+            "$HEADER\nwaypoint:Local:L:1:2:3:1:false:0:set:false:0:0:false\n" +
+                "waypoint:Server:X:4:5:6:9:true:0:set:false:0:0:false",
         )
         val download = WaypointSnapshot.create(
             listOf(
@@ -71,6 +72,8 @@ class WaypointSnapshotFilesTest {
         val automaticWorld = Files.readString(temporaryDirectory.resolve("dim%0/mw0,1,0_2.txt"))
         assertTrue(automaticWorld.contains("waypoint:Local:"))
         assertTrue(automaticWorld.contains("waypoint:Server:"))
+        assertFalse(automaticWorld.contains("waypoint:Server:X:"))
+        assertEquals(1, automaticWorld.lineSequence().count { it.startsWith("waypoint:Server:") })
         assertFalse(Files.exists(temporaryDirectory.resolve("dim%0/mw\$default_1.txt")))
         assertEquals("defaultMultiworldId:mw0,1,0", Files.readString(temporaryDirectory.resolve("config.txt")))
         assertEquals(

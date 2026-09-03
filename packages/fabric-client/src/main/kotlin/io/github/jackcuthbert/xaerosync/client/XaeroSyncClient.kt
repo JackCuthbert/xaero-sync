@@ -63,15 +63,12 @@ class XaeroSyncClient : ClientModInitializer {
 
         ClientPlayConnectionEvents.JOIN.register { _, sender, client ->
             val address = client.currentServer?.ip ?: return@register
-            val appliedDownload = sync?.applyPendingAutomaticWorldDownload()
             playUpload?.close()
             playUpload = ClientPlayUpload(
                 XaeroConnectionScope.from(client.gameDirectory.toPath(), address),
             ) { message ->
                 sender.sendPacket(PlaySyncPayload(SyncMessageCodec.encode(message)))
             }
-            appliedDownload?.let(requireNotNull(playUpload)::acknowledgeDownloaded)
-            if (appliedDownload != null) notifyReconnectRequired(client)
         }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             playUpload?.close()

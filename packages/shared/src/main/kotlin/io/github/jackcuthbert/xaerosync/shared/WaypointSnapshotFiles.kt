@@ -128,15 +128,24 @@ object WaypointSnapshotFiles {
 
     private fun mergeWaypointContents(existing: ByteArray, downloaded: ByteArray): ByteArray {
         val existingText = existing.toString(Charsets.UTF_8)
-        val existingWaypoints = existingText.lineSequence()
-            .filterTo(mutableSetOf()) { it.startsWith("waypoint:") }
-        val additionalWaypoints = downloaded.toString(Charsets.UTF_8).lineSequence()
-            .filter { it.startsWith("waypoint:") && existingWaypoints.add(it) }
+        val downloadedWaypoints = downloaded.toString(Charsets.UTF_8).lineSequence()
+            .filter { it.startsWith("waypoint:") }
+            .distinctBy(::waypointIdentity)
             .toList()
-        if (additionalWaypoints.isEmpty()) return existing
+        val downloadedKeys = downloadedWaypoints.mapTo(mutableSetOf(), ::waypointIdentity)
+        val retainedLines = existingText.lineSequence().filterNot { line ->
+            line.startsWith("waypoint:") && waypointIdentity(line) in downloadedKeys
+        }
+        return (retainedLines + downloadedWaypoints.asSequence()).joinToString("\n", postfix = "\n").toByteArray()
+    }
 
-        val separator = if (existingText.endsWith("\n")) "" else "\n"
-        return (existingText + separator + additionalWaypoints.joinToString("\n") + "\n").toByteArray()
+    private fun waypointIdentity(line: String): String {
+        val fields = line.split(':')
+        return if (fields.size >= 6) {
+            listOf(fields[1], fields[3], fields[4], fields[5]).joinToString("\u0000")
+        } else {
+            line
+        }
     }
 
     private fun existingWaypointFiles(root: Path): List<Path> = Files.walk(root).use { paths ->
