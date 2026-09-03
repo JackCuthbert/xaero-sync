@@ -76,6 +76,51 @@ class WaypointSnapshotTest {
         assertContentEquals(fixture("dim%1/mw\$default_1.txt"), snapshot.files.single().contents)
     }
 
+    @Test
+    fun `does not expose mutable snapshot collections`() {
+        val snapshot = WaypointSnapshot.create(
+            listOf(waypointFile("dim%0/mw\$default_1.txt", "A")),
+            Instant.EPOCH,
+        )
+
+        assertFailsWith<UnsupportedOperationException> { (snapshot.files as MutableList).clear() }
+        assertFailsWith<UnsupportedOperationException> { (snapshot.manifest as MutableList).clear() }
+    }
+
+    @Test
+    fun `enforces file count path and file size safety ceilings`() {
+        val tooManyFiles = (0..SnapshotLimits.MAX_FILES).map { index ->
+            waypointFile("dim%0/mw\$$index.txt", "A")
+        }
+        val longName = "a".repeat(SnapshotLimits.MAX_PATH_BYTES) + ".txt"
+        val oversizedContents = ByteArray(SnapshotLimits.MAX_FILE_BYTES + 1).also { contents ->
+            "#waypoint:name\n".toByteArray().copyInto(contents)
+        }
+
+        assertFailsWith<IllegalArgumentException> { WaypointSnapshot.create(tooManyFiles, Instant.EPOCH) }
+        assertFailsWith<IllegalArgumentException> {
+            WaypointSnapshot.create(listOf(waypointFile("dim%0/mw\$$longName", "A")), Instant.EPOCH)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            WaypointSnapshot.create(
+                listOf(WaypointFile("dim%0/mw\$oversized.txt", oversizedContents)),
+                Instant.EPOCH,
+            )
+        }
+    }
+
+    @Test
+    fun `enforces the total decoded-content safety ceiling`() {
+        val fileContents = ByteArray(SnapshotLimits.MAX_FILE_BYTES).also { contents ->
+            "#waypoint:name\n".toByteArray().copyInto(contents)
+        }
+        val files = (0..SnapshotLimits.MAX_TOTAL_BYTES / SnapshotLimits.MAX_FILE_BYTES).map { index ->
+            WaypointFile("dim%0/mw\$$index.txt", fileContents)
+        }
+
+        assertFailsWith<IllegalArgumentException> { WaypointSnapshot.create(files, Instant.EPOCH) }
+    }
+
     private fun waypointFile(path: String, suffix: String): WaypointFile = WaypointFile(
         path,
         "#waypoint:name\nwaypoint:Test:T:0:64:0:1:false:0:gui.xaero_default:false:0:0:false$suffix".toByteArray(),

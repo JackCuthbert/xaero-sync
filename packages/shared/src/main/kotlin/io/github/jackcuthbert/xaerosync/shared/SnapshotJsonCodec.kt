@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.time.Instant
+import java.time.format.DateTimeParseException
 import java.util.Base64
 
 /** Strict JSON codec for snapshots stored locally and by the Paper plugin. */
@@ -27,15 +28,30 @@ object SnapshotJsonCodec {
     )
 
     fun decode(encoded: String): WaypointSnapshot = try {
+        require(encoded.toByteArray(Charsets.UTF_8).size <= SnapshotLimits.MAX_JSON_RECORD_BYTES) {
+            "Snapshot JSON record is too large."
+        }
         val record = json.decodeFromString<SnapshotRecord>(encoded)
         require(record.formatVersion == FORMAT_VERSION) {
             "Unsupported snapshot format version: ${record.formatVersion}"
         }
 
+        require(record.files.size <= SnapshotLimits.MAX_FILES) {
+            "Snapshot record contains too many files."
+        }
+        var totalBytes = 0L
+        val files = record.files.map { file ->
+            require(file.path.toByteArray(Charsets.UTF_8).size <= SnapshotLimits.MAX_PATH_BYTES) {
+                "Snapshot path is too long."
+            }
+            val contents = Base64.getDecoder().decode(file.contents)
+            require(contents.size <= SnapshotLimits.MAX_FILE_BYTES) { "Snapshot file is too large." }
+            totalBytes += contents.size
+            require(totalBytes <= SnapshotLimits.MAX_TOTAL_BYTES) { "Snapshot content is too large." }
+            WaypointFile(file.path, contents)
+        }
         val snapshot = WaypointSnapshot.create(
-            record.files.map { file ->
-                WaypointFile(file.path, Base64.getDecoder().decode(file.contents))
-            },
+            files,
             Instant.parse(record.updatedAt),
         )
         require(snapshot.hash == record.hash) { "Snapshot content hash does not match its record." }
@@ -43,6 +59,8 @@ object SnapshotJsonCodec {
     } catch (exception: IllegalArgumentException) {
         throw InvalidSnapshotRecordException("Invalid snapshot record.", exception)
     } catch (exception: SerializationException) {
+        throw InvalidSnapshotRecordException("Invalid snapshot record.", exception)
+    } catch (exception: DateTimeParseException) {
         throw InvalidSnapshotRecordException("Invalid snapshot record.", exception)
     }
 

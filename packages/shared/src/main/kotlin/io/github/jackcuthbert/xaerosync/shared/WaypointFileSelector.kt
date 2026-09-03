@@ -3,9 +3,14 @@ package io.github.jackcuthbert.xaerosync.shared
 /** Selects Xaero Minimap waypoint files without interpreting or rewriting their records. */
 object WaypointFileSelector {
     private val waypointFilename = Regex("""mw\$.*\.txt""")
+    private val windowsAbsolutePath = Regex("""^[A-Za-z]:/.*""")
 
     fun isEligible(relativePath: String, contents: ByteArray): Boolean {
-        val segments = relativePath.replace('\\', '/').split('/')
+        if ('\\' in relativePath || relativePath.startsWith('/') || windowsAbsolutePath.matches(relativePath)) {
+            return false
+        }
+
+        val segments = relativePath.split('/')
         if (segments.size < 2 || segments.any { it.isEmpty() || it == "." || it == ".." }) {
             return false
         }

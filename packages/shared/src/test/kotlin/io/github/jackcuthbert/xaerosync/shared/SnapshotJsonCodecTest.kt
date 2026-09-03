@@ -48,6 +48,20 @@ class SnapshotJsonCodecTest {
         }
     }
 
+    @Test
+    fun `normalizes malformed timestamps base64 unknown fields and duplicate paths`() {
+        val invalidRecords = listOf(
+            """{"formatVersion":1,"updatedAt":"yesterday","hash":"bad","files":[]}""",
+            """{"formatVersion":1,"updatedAt":"2026-09-03T05:00:00Z","hash":"bad","files":[{"path":"dim%0/mw${'$'}default_1.txt","contents":"%%%"}]}""",
+            """{"formatVersion":1,"updatedAt":"2026-09-03T05:00:00Z","hash":"bad","files":[],"unexpected":true}""",
+            """{"formatVersion":1,"updatedAt":"2026-09-03T05:00:00Z","hash":"bad","files":[{"path":"dim%0/mw${'$'}default_1.txt","contents":"I3dheXBvaW50Om5hbWUK"},{"path":"dim%0/mw${'$'}default_1.txt","contents":"I3dheXBvaW50Om5hbWUK"}]}""",
+        )
+
+        invalidRecords.forEach { record ->
+            assertFailsWith<InvalidSnapshotRecordException> { SnapshotJsonCodec.decode(record) }
+        }
+    }
+
     private fun fixture(relativePath: String): ByteArray = requireNotNull(
         javaClass.getResourceAsStream("/fixtures/xaero-minimap/Multiplayer_example.invalid/$relativePath"),
     ).readBytes()

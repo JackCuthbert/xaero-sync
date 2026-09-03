@@ -19,6 +19,12 @@ class AtomicSnapshotStore(private val recordPath: Path) {
             return null
         }
         return try {
+            if (Files.size(recordPath) > SnapshotLimits.MAX_JSON_RECORD_BYTES) {
+                throw InvalidSnapshotRecordException(
+                    "Snapshot JSON record is too large.",
+                    IllegalArgumentException("Record exceeds ${SnapshotLimits.MAX_JSON_RECORD_BYTES} bytes."),
+                )
+            }
             SnapshotJsonCodec.decode(Files.readString(recordPath))
         } catch (exception: IOException) {
             throw SnapshotStorageException("Could not read snapshot record at $recordPath.", exception)
