@@ -16,6 +16,7 @@ dependencies {
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.paper.api)
 }
 
 val pluginVersion = project.version.toString()

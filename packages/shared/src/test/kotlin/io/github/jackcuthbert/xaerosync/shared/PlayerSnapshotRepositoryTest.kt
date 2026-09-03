@@ -31,6 +31,7 @@ class PlayerSnapshotRepositoryTest {
 
         val restarted = PlayerSnapshotRepository(temporaryDirectory)
         assertEquals(snapshot.hash, restarted.load(owner)?.hash)
+        assertEquals(1, restarted.status(owner).canonicalFileCount)
         assertNull(restarted.load(other))
     }
 
@@ -45,6 +46,8 @@ class PlayerSnapshotRepositoryTest {
         val original = snapshot(10, "Original")
         repository.save(player, original)
         val restorePoint = repository.backup(player)
+        assertEquals(1, restorePoint.fileCount)
+        assertEquals(restoreTime, restorePoint.createdAt)
         val current = snapshot(20, "Current")
         repository.save(player, current)
 
