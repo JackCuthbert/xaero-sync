@@ -72,6 +72,7 @@ class WaypointFile(val path: String, contents: ByteArray) {
     fun copyOf(): WaypointFile = WaypointFile(path, rawContents)
 }
 
+@kotlinx.serialization.Serializable
 data class SnapshotManifestEntry(val path: String, val byteSize: Int)
 
 object SnapshotLimits {
