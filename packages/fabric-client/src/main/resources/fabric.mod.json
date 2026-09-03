@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "xaero-sync",
+  "version": "${version}",
+  "name": "Xaero Sync",
+  "description": "Back up Xaero's Minimap waypoints to a Paper server.",
+  "authors": [
+    "Jack Cuthbert"
+  ],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "io.github.jackcuthbert.xaerosync.client.XaeroSyncClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "fabric-language-kotlin": ">=1.13.13+kotlin.2.4.10",
+    "minecraft": "26.2"
+  }
+}

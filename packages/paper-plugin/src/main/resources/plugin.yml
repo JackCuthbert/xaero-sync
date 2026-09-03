@@ -1,0 +1,5 @@
+name: XaeroSync
+version: ${version}
+main: io.github.jackcuthbert.xaerosync.paper.XaeroSyncPlugin
+api-version: '26.2'
+description: Back up Xaero's Minimap waypoints to this Paper server.
