@@ -11,7 +11,7 @@ xaero/minimap/Multiplayer_example.invalid/
 └── dim%-1/mw$default_1.txt            # Nether waypoint set
 ```
 
-The exact target build also generated `dim%0/mw0,1,0_2.txt` for the currently detected automatic Overworld and `dim%1/mw0,1,0_1.txt` for the automatic End. The `mw0,1,0` portion matched `defaultMultiworldId` in the connection's `config.txt`; the numeric suffix is assigned independently per dimension. A pre-seeded `mw$default_1.txt` remained visible but was treated as a separate, non-automatic sub-world. Filenames must therefore be preserved exactly; `$default` is not a universal marker for the active world.
+The exact target build also generated `dim%0/mw0,1,0_2.txt` for the currently detected automatic Overworld and `dim%1/mw0,1,0_1.txt` for the automatic End. The `mw0,1,0` portion matched `defaultMultiworldId` in the connection's `config.txt`; the numeric suffix is assigned independently per dimension. A pre-seeded `mw$default_1.txt` remained visible but was treated as a separate, non-automatic sub-world.
 
 Observed waypoint files begin with a Xaero header and records such as:
 
@@ -42,6 +42,12 @@ The observed default Overworld, Nether, detected automatic-Overworld, and automa
 - Write received files atomically: write a temporary sibling, flush, then rename. Remove only previously managed eligible files absent from the received manifest.
 - Never modify `config.txt` or unrelated files/directories.
 - Suppress watcher events caused by the mod's own writes using the expected hash/manifest, not timing alone.
+
+### Automatic-world migration on download
+
+`config.txt` remains local-only, but its `defaultMultiworldId` identifies the currently selected automatic Xaero world. When a download contains Xaero's legacy `mw$default_<index>.txt` representation, the client writes it under that local automatic-world ID instead. If Xaero has already created the matching local file, waypoint records from the download are appended without duplicating identical records. If it has not, the client preserves the incoming dimension-specific numeric suffix while creating the local automatic filename.
+
+This narrow migration prevents a restored legacy automatic world from appearing as a separate numbered sub-world on a fresh installation. It applies only to `mw$default_*`; all other sub-world filenames remain distinct and are preserved unchanged. The server keeps its canonical snapshot filename, and the local migration is recorded as synchronized so it does not immediately rewrite the server record.
 
 ## File watcher
 
