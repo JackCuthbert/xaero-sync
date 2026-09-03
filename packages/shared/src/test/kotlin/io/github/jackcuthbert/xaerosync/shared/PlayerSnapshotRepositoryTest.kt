@@ -2,6 +2,7 @@ package io.github.jackcuthbert.xaerosync.shared
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 import java.time.Instant
@@ -9,6 +10,7 @@ import java.time.ZoneOffset
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PlayerSnapshotRepositoryTest {
     @TempDir
@@ -91,6 +93,89 @@ class PlayerSnapshotRepositoryTest {
         assertEquals(original.hash, repository.listSnapshots(player).single().hash)
     }
 
+    @Test
+    fun `default retention keeps the newest ten restore points`() {
+        val player = UUID.randomUUID()
+        val clock = MutableClock(Instant.ofEpochSecond(100))
+        val repository = PlayerSnapshotRepository(temporaryDirectory, clock)
+        val backups = buildList {
+            repeat(11) { index ->
+                repository.save(player, snapshot(index.toLong(), "Waypoint $index"))
+                add(repository.backup(player))
+                clock.now = clock.now.plusSeconds(1)
+            }
+        }
+
+        val retained = repository.listSnapshots(player)
+
+        assertEquals(10, retained.size)
+        assertTrue(retained.none { it.id == backups.first().id })
+        assertEquals(backups.last().id, retained.first().id)
+    }
+
+    @Test
+    fun `configured and unlimited retention keep the intended number of restore points`() {
+        val player = UUID.randomUUID()
+        val limited = PlayerSnapshotRepository(
+            temporaryDirectory.resolve("limited"),
+            retention = SnapshotRetention(2),
+        )
+        val unlimited = PlayerSnapshotRepository(
+            temporaryDirectory.resolve("unlimited"),
+            retention = SnapshotRetention.UNLIMITED,
+        )
+
+        repeat(3) { index ->
+            limited.save(player, snapshot(index.toLong(), "Limited $index"))
+            limited.backup(player)
+            unlimited.save(player, snapshot(index.toLong(), "Unlimited $index"))
+            unlimited.backup(player)
+        }
+
+        assertEquals(2, limited.status(player).snapshotCount)
+        assertEquals(3, unlimited.status(player).snapshotCount)
+    }
+
+    @Test
+    fun `restore works after retention prunes older restore points`() {
+        val player = UUID.randomUUID()
+        val repository = PlayerSnapshotRepository(temporaryDirectory, retention = SnapshotRetention(2))
+        val first = snapshot(10, "First")
+        val second = snapshot(20, "Second")
+        repository.save(player, first)
+        repository.backup(player)
+        repository.save(player, second)
+        val secondBackup = repository.backup(player)
+        repository.save(player, snapshot(30, "Third"))
+        repository.backup(player)
+
+        val restored = repository.restore(player, secondBackup.id)
+
+        assertEquals(second.hash, restored.hash)
+        assertEquals(2, repository.status(player).snapshotCount)
+    }
+
+    @Test
+    fun `unreadable restore points are skipped and reported while valid snapshots remain available`() {
+        val player = UUID.randomUUID()
+        val reported = mutableListOf<Path>()
+        val repository = PlayerSnapshotRepository(temporaryDirectory, onUnreadableSnapshot = { path, _ ->
+            reported.add(path)
+        })
+        repository.save(player, snapshot(10, "Valid"))
+        repository.backup(player)
+        val corrupt = temporaryDirectory.resolve("snapshots").resolve(player.toString()).resolve("corrupt.json")
+        Files.writeString(corrupt, "not JSON")
+
+        assertEquals(1, repository.listSnapshots(player).size)
+        assertEquals(listOf(corrupt), reported)
+    }
+
+    private class MutableClock(var now: Instant) : Clock() {
+        override fun getZone(): ZoneOffset = ZoneOffset.UTC
+        override fun withZone(zone: java.time.ZoneId): Clock = this
+        override fun instant(): Instant = now
+    }
     private fun snapshot(second: Long, name: String) = WaypointSnapshot.create(
         listOf(
             WaypointFile(
