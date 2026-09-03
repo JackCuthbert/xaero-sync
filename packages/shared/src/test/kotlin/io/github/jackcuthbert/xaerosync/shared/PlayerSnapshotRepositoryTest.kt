@@ -73,6 +73,24 @@ class PlayerSnapshotRepositoryTest {
         assertEquals(canonical.hash, repository.load(player)?.hash)
     }
 
+    @Test
+    fun `replace copies another players files with a new timestamp and preserves the previous record`() {
+        val player = UUID.randomUUID()
+        val sourcePlayer = UUID.randomUUID()
+        val replacementTime = Instant.ofEpochSecond(100)
+        val repository = PlayerSnapshotRepository(temporaryDirectory, Clock.fixed(replacementTime, ZoneOffset.UTC))
+        val original = snapshot(10, "Original")
+        val source = snapshot(20, "Source")
+        repository.save(player, original)
+        repository.save(sourcePlayer, source)
+
+        val result = repository.replace(player, sourcePlayer)
+
+        assertEquals(source.hash, result.snapshot.hash)
+        assertEquals(replacementTime, result.snapshot.updatedAt)
+        assertEquals(original.hash, repository.listSnapshots(player).single().hash)
+    }
+
     private fun snapshot(second: Long, name: String) = WaypointSnapshot.create(
         listOf(
             WaypointFile(

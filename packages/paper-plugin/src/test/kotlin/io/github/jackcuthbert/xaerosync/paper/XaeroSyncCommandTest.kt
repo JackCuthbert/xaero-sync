@@ -146,11 +146,69 @@ class XaeroSyncCommandTest {
         assertEquals(playerId, fixture.runtime.notifications.single().first)
     }
 
-    private fun fixture(commandPermission: Boolean = true): Fixture {
+    @Test
+    fun `replace previews another player then preserves the callers backup before replacement`() {
+        val fixture = fixture()
+        val sourceId = UUID.fromString("00000000-0000-0000-0000-000000000002")
+        val original = snapshot("Original", now.minusSeconds(60))
+        val source = snapshot("Source", now.minusSeconds(30))
+        fixture.repository.save(playerId, original)
+        fixture.repository.save(sourceId, source)
+
+        fixture.command.execute(fixture.player.sender, "xaerosync", arrayOf("replace", "Friend"))
+
+        assertContains(fixture.player.text(), "From: Friend")
+        assertContains(fixture.player.text(), "1 dimensions • 1 files • 1 waypoints")
+        assertTrue(fixture.player.clickCommands().contains("/xaerosync replace Friend --confirm"))
+        assertEquals(original.hash, fixture.repository.load(playerId)?.hash)
+
+        fixture.player.messages.clear()
+        fixture.command.execute(
+            fixture.player.sender,
+            "xaerosync",
+            arrayOf("replace", "Friend", "--confirm"),
+        )
+
+        assertEquals(source.hash, fixture.repository.load(playerId)?.hash)
+        assertEquals(1, fixture.repository.status(playerId).snapshotCount)
+        assertContains(fixture.player.text(), "Reconnect to load them")
+    }
+
+    @Test
+    fun `replace explains unknown and unsynced sources`() {
+        val fixture = fixture()
+
+        fixture.command.execute(fixture.player.sender, "xaerosync", arrayOf("replace", "Unknown"))
+        fixture.command.execute(fixture.player.sender, "xaerosync", arrayOf("replace", "Friend"))
+
+        assertContains(fixture.player.text(), "not known to this server")
+        assertContains(fixture.player.text(), "Friend has no waypoint backup yet")
+    }
+
+    @Test
+    fun `replace denies callers without permission`() {
+        val fixture = fixture(replacePermission = false)
+
+        fixture.command.execute(fixture.player.sender, "xaerosync", arrayOf("replace", "Friend"))
+
+        assertContains(fixture.player.text(), "don't have permission to replace")
+        assertTrue(fixture.command.complete(fixture.player.sender, arrayOf("replace", "")).isEmpty())
+    }
+
+    private fun fixture(commandPermission: Boolean = true, replacePermission: Boolean = true): Fixture {
         val repository = PlayerSnapshotRepository(temporaryDirectory, clock)
-        val player = SenderProbe.player(playerId, "TestPlayer", commandPermission, adminPermission = false)
+        val player = SenderProbe.player(
+            playerId,
+            "TestPlayer",
+            commandPermission,
+            adminPermission = false,
+            replacePermission = replacePermission,
+        )
         val console = SenderProbe.console(commandPermission = true, adminPermission = true)
-        val runtime = FakeRuntime(OnlinePlayer(playerId, "TestPlayer"))
+        val runtime = FakeRuntime(
+            OnlinePlayer(playerId, "TestPlayer"),
+            OnlinePlayer(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Friend"),
+        )
         return Fixture(repository, player, console, runtime, XaeroSyncCommand(runtime, repository, clock))
     }
 
@@ -179,7 +237,9 @@ private class FakeRuntime(vararg players: OnlinePlayer) : CommandRuntime {
     override fun runStorage(operation: () -> Unit) = operation()
     override fun runMain(operation: () -> Unit) = operation()
     override fun findOnlinePlayer(name: String): OnlinePlayer? = players[name]
+    override fun findKnownPlayer(name: String): OnlinePlayer? = players[name]
     override fun onlinePlayers(): Collection<OnlinePlayer> = players.values
+    override fun knownPlayers(): Collection<OnlinePlayer> = players.values
     override fun notifyPlayer(playerId: UUID, message: Component) {
         notifications += playerId to message
     }
@@ -191,10 +251,21 @@ private class SenderProbe private constructor(val sender: CommandSender, val mes
     fun clickCommands(): List<String> = messages.flatMap { it.clickCommands() }
 
     companion object {
-        fun player(id: UUID, name: String, commandPermission: Boolean, adminPermission: Boolean): SenderProbe =
-            create(Player::class.java, id, name, commandPermission, adminPermission)
-        fun console(commandPermission: Boolean, adminPermission: Boolean): SenderProbe =
-            create(CommandSender::class.java, null, "CONSOLE", commandPermission, adminPermission)
+        fun player(
+            id: UUID,
+            name: String,
+            commandPermission: Boolean,
+            adminPermission: Boolean,
+            replacePermission: Boolean,
+        ): SenderProbe = create(Player::class.java, id, name, commandPermission, adminPermission, replacePermission)
+        fun console(commandPermission: Boolean, adminPermission: Boolean): SenderProbe = create(
+            CommandSender::class.java,
+            null,
+            "CONSOLE",
+            commandPermission,
+            adminPermission,
+            replacePermission = true,
+        )
 
         private fun create(
             type: Class<out CommandSender>,
@@ -202,6 +273,7 @@ private class SenderProbe private constructor(val sender: CommandSender, val mes
             name: String,
             commandPermission: Boolean,
             adminPermission: Boolean,
+            replacePermission: Boolean,
         ): SenderProbe {
             val messages = mutableListOf<Component>()
             val sender = Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { proxy, method, arguments ->
@@ -211,6 +283,7 @@ private class SenderProbe private constructor(val sender: CommandSender, val mes
                     "hasPermission" -> when (arguments?.firstOrNull()) {
                         "xaerosync.command" -> commandPermission
                         "xaerosync.admin" -> adminPermission
+                        "xaerosync.replace" -> replacePermission
                         else -> false
                     }
                     "sendMessage" -> {

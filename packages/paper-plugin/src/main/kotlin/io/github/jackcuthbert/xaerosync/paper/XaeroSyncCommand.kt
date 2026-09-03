@@ -54,6 +54,10 @@ internal class XaeroSyncCommand(
             reply(sender, error("You need administrator permission to view diagnostics."))
             return
         }
+        if (subcommand == "replace" && !sender.hasPermission(REPLACE_PERMISSION)) {
+            reply(sender, error("You don't have permission to replace waypoint backups."))
+            return
+        }
         if (
             subcommand in setOf("backups", "snapshots") &&
             args.getOrNull(1) != null &&
@@ -64,12 +68,15 @@ internal class XaeroSyncCommand(
             return
         }
         val target = resolvePlayer(sender, targetArgument(subcommand, args)) ?: return
+        val replacementSource = if (subcommand == "replace") resolveReplacementSource(sender, args) else null
+        if (subcommand == "replace" && replacementSource == null) return
         runtime.runStorage {
             runCatching {
                 when (subcommand) {
                     "status" -> status(sender, target)
                     "backup" -> backup(sender, target)
                     "backups", "snapshots" -> backups(sender, target, requestedPage(args))
+                    "replace" -> replace(sender, target, requireNotNull(replacementSource), args)
                     "restore" -> restore(sender, target, args)
                     "diagnostics" -> diagnostics(sender, target)
                 }
@@ -91,17 +98,19 @@ internal class XaeroSyncCommand(
         if (!sender.hasPermission(COMMAND_PERMISSION)) return emptyList()
         val candidates = when (args.size) {
             1 -> buildList {
-                addAll(listOf("status", "backup", "backups", "restore", "help"))
+                addAll(listOf("status", "backup", "backups", "replace", "restore", "help"))
                 if (sender.hasPermission(ADMIN_PERMISSION)) add("diagnostics")
             }
             2 -> when (args[0].lowercase()) {
                 "restore" -> sender.playerId()?.let { knownSnapshotIds[it] }.orEmpty()
+                "replace" -> sourcePlayers(sender)
                 "backups", "snapshots" -> listOf("1") + adminTargets(sender)
                 "status", "backup", "diagnostics" -> adminTargets(sender)
                 else -> emptyList()
             }
             3 -> when (args[0].lowercase()) {
                 "restore" -> listOf(CONFIRM_FLAG) + adminTargets(sender)
+                "replace" -> listOf(CONFIRM_FLAG)
                 "backups", "snapshots" -> if (args[1].toIntOrNull() != null) adminTargets(sender) else emptyList()
                 else -> emptyList()
             }
@@ -197,6 +206,45 @@ internal class XaeroSyncCommand(
         }
     }
 
+    private fun replace(sender: CommandSender, target: TargetPlayer, source: OnlinePlayer, args: Array<out String>) {
+        val sourceSnapshot = repository.load(source.id)
+        if (sourceSnapshot == null) {
+            reply(sender, error("${source.name} has no waypoint backup yet."))
+            return
+        }
+        if (!isConfirmation(args.getOrNull(2))) {
+            reply(sender, title("Replace your waypoints?"))
+            reply(sender, Component.text("From: ${source.name}", NamedTextColor.WHITE))
+            reply(
+                sender,
+                muted(
+                    "${sourceSnapshot.files.dimensionCount()} dimensions • " +
+                        "${sourceSnapshot.files.size} files • ${sourceSnapshot.files.waypointCount()} waypoints",
+                ),
+            )
+            reply(sender, muted("Last updated ${CommandText.displayTime(sourceSnapshot.updatedAt)}"))
+            reply(sender, warning("Your current server backup will be saved first. Reconnect to load the replacement."))
+            val command = "/xaerosync replace ${source.name} $CONFIRM_FLAG"
+            reply(sender, action("[Confirm replacement]", command, NamedTextColor.RED))
+            return
+        }
+        repository.replace(target.id, source.id)
+        remember(target.id)
+        reply(sender, success("Waypoints replaced from ${source.name}. Reconnect to load them into Xaero."))
+    }
+
+    private fun resolveReplacementSource(sender: CommandSender, args: Array<out String>): OnlinePlayer? {
+        val sourceName = args.getOrNull(1)
+        if (sourceName == null) {
+            reply(sender, error("Choose a player whose waypoints you want to use."))
+            return null
+        }
+        return runtime.findKnownPlayer(sourceName) ?: run {
+            reply(sender, error("Player '$sourceName' is not known to this server."))
+            null
+        }
+    }
+
     private fun resolvePlayer(sender: CommandSender, argument: String?): TargetPlayer? {
         val senderId = sender.playerId()
         if (argument == null && senderId != null) return TargetPlayer(senderId, sender.name, null)
@@ -222,6 +270,9 @@ internal class XaeroSyncCommand(
         reply(sender, helpLine("/xaerosync", "backup status"))
         reply(sender, helpLine("/xaerosync backup", "create a restore point"))
         reply(sender, helpLine("/xaerosync backups [page]", "view and restore backups"))
+        if (sender.hasPermission(REPLACE_PERMISSION)) {
+            reply(sender, helpLine("/xaerosync replace <player>", "use another player's waypoint backup"))
+        }
         if (sender.hasPermission(ADMIN_PERMISSION)) {
             reply(sender, helpLine("/xaerosync diagnostics <player>", "technical backup details"))
             reply(sender, muted("Admins may use an online player name or UUID."))
@@ -245,9 +296,10 @@ internal class XaeroSyncCommand(
         return result.build()
     }
 
-    private fun action(label: String, command: String) = Component.text(label, NamedTextColor.AQUA)
-        .clickEvent(ClickEvent.runCommand(command))
-        .hoverEvent(HoverEvent.showText(Component.text(command)))
+    private fun action(label: String, command: String, color: NamedTextColor = NamedTextColor.AQUA) =
+        Component.text(label, color)
+            .clickEvent(ClickEvent.runCommand(command))
+            .hoverEvent(HoverEvent.showText(Component.text(command)))
 
     private fun backupLine(number: Int, snapshot: StoredSnapshot, target: String?) = Component.text()
         .append(Component.text("$number. ${CommandText.displayTime(snapshot.createdAt)}", NamedTextColor.WHITE))
@@ -262,8 +314,12 @@ internal class XaeroSyncCommand(
     private fun adminTargets(sender: CommandSender): List<String> =
         if (sender.hasPermission(ADMIN_PERMISSION)) runtime.onlinePlayers().map { it.name } else emptyList()
 
+    private fun sourcePlayers(sender: CommandSender): List<String> =
+        if (sender.hasPermission(REPLACE_PERMISSION)) runtime.knownPlayers().map { it.name } else emptyList()
+
     private fun targetArgument(subcommand: String, args: Array<out String>): String? = when (subcommand) {
         "backups", "snapshots" -> if (args.getOrNull(1)?.toIntOrNull() != null) args.getOrNull(2) else args.getOrNull(1)
+        "replace" -> null
         "restore" -> if (isConfirmation(args.getOrNull(2))) args.getOrNull(3) else args.getOrNull(2)
         else -> args.getOrNull(1)
     }
@@ -289,14 +345,19 @@ internal class XaeroSyncCommand(
     private fun CommandSender.playerId(): UUID? = (this as? Player)?.uniqueId
     private fun String?.suffix(): String = this?.let { " $it" } ?: ""
     private fun isConfirmation(argument: String?): Boolean = argument == CONFIRM_FLAG || argument == "confirm"
+    private fun Collection<io.github.jackcuthbert.xaerosync.shared.WaypointFile>.dimensionCount(): Int =
+        map { it.path.substringBefore('/') }.distinct().size
+    private fun Collection<io.github.jackcuthbert.xaerosync.shared.WaypointFile>.waypointCount(): Int =
+        sumOf { it.contents.toString(Charsets.UTF_8).lineSequence().count { line -> line.startsWith("waypoint:") } }
     private data class TargetPlayer(val id: UUID, val name: String, val argument: String?)
 
     private companion object {
         const val COMMAND_PERMISSION = "xaerosync.command"
         const val ADMIN_PERMISSION = "xaerosync.admin"
+        const val REPLACE_PERMISSION = "xaerosync.replace"
         const val CONFIRM_FLAG = "--confirm"
         const val PAGE_SIZE = 5
-        val SUBCOMMANDS = setOf("status", "backup", "backups", "snapshots", "restore", "diagnostics")
+        val SUBCOMMANDS = setOf("status", "backup", "backups", "snapshots", "replace", "restore", "diagnostics")
         fun title(message: String): Component = Component.text(message, NamedTextColor.GOLD)
         fun success(message: String): Component = Component.text("✓ $message", NamedTextColor.GREEN)
         fun warning(message: String): Component = Component.text(message, NamedTextColor.YELLOW)
@@ -309,7 +370,9 @@ internal interface CommandRuntime {
     fun runStorage(operation: () -> Unit)
     fun runMain(operation: () -> Unit)
     fun findOnlinePlayer(name: String): OnlinePlayer?
+    fun findKnownPlayer(name: String): OnlinePlayer?
     fun onlinePlayers(): Collection<OnlinePlayer>
+    fun knownPlayers(): Collection<OnlinePlayer>
     fun notifyPlayer(playerId: UUID, message: Component)
     fun logFailure(playerId: UUID, error: Throwable)
 }
@@ -323,8 +386,13 @@ private class PaperCommandRuntime(private val plugin: XaeroSyncPlugin) : Command
     }
     override fun findOnlinePlayer(name: String): OnlinePlayer? =
         plugin.server.getPlayerExact(name)?.let { OnlinePlayer(it.uniqueId, it.name) }
+    override fun findKnownPlayer(name: String): OnlinePlayer? = findOnlinePlayer(name)
+        ?: plugin.server.getOfflinePlayer(name).takeIf { it.hasPlayedBefore() }?.let { offlinePlayer ->
+            OnlinePlayer(offlinePlayer.uniqueId, offlinePlayer.name ?: name)
+        }
     override fun onlinePlayers(): Collection<OnlinePlayer> =
         plugin.server.onlinePlayers.map { OnlinePlayer(it.uniqueId, it.name) }
+    override fun knownPlayers(): Collection<OnlinePlayer> = onlinePlayers()
     override fun notifyPlayer(playerId: UUID, message: Component) {
         runMain { plugin.server.getPlayer(playerId)?.sendMessage(message) }
     }
