@@ -5,6 +5,8 @@ import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
+import net.fabricmc.fabric.impl.networking.RegistrationPayload
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket
 import org.slf4j.LoggerFactory
 
 /** Client entry point and configuration-phase compatibility probe. */
@@ -28,15 +30,28 @@ class XaeroSyncClient : ClientModInitializer {
         }
 
         ClientConfigurationConnectionEvents.START.register { _, _ ->
-            if (ClientConfigurationNetworking.canSend(ConfigurationProbeRequest.TYPE)) {
-                ClientConfigurationNetworking.send(ConfigurationProbeRequest(ConfigurationProbe.PROTOCOL_VERSION))
-            } else {
-                LOGGER.debug("Server does not advertise Xaero Sync's configuration channel.")
-            }
+            ConfigurationProbeHandshake.start(
+                registerResponseChannel = {
+                    val registration = RegistrationPayload(
+                        RegistrationPayload.REGISTER,
+                        listOf(ConfigurationProbeResponse.TYPE.id()),
+                    )
+                    ClientConfigurationNetworking.getSender().sendPacket(ServerboundCustomPayloadPacket(registration))
+                },
+                sendProbe = ClientConfigurationNetworking::send,
+            )
+            LOGGER.debug("Sent configuration probe before entering play.")
         }
     }
 
     private companion object {
         val LOGGER = LoggerFactory.getLogger("Xaero Sync")
+    }
+}
+
+internal object ConfigurationProbeHandshake {
+    fun start(registerResponseChannel: () -> Unit, sendProbe: (ConfigurationProbeRequest) -> Unit) {
+        registerResponseChannel()
+        sendProbe(ConfigurationProbeRequest(ConfigurationProbe.PROTOCOL_VERSION))
     }
 }

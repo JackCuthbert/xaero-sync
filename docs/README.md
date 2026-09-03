@@ -17,6 +17,7 @@ It supports Xaero's Minimap Fabric `26.2-26.4.2`. The product is deliberately a 
 - [Architecture](architecture.md) — components, responsibilities, and scope.
 - [Synchronization protocol](synchronization.md) — connect, play, disconnect, and conflict rules.
 - [Client waypoint files](client-files.md) — discovery, filtering, snapshots, and file watching.
+- [Target-version compatibility evidence](compatibility.md) — observed files and outstanding manual checks.
 - [Server persistence and commands](server.md) — JSON records, snapshots, and recovery commands.
 - [Development process](development.md) — milestones, compatibility spike, tests, and release criteria.
 
