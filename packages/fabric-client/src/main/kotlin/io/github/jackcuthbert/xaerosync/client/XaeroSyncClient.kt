@@ -75,7 +75,7 @@ class XaeroSyncClient : ClientModInitializer {
             playUpload?.flush()
         }
 
-        ClientConfigurationConnectionEvents.START.register { _, client ->
+        ClientConfigurationConnectionEvents.START.register { listener, client ->
             ConfigurationProbeHandshake.start(
                 registerResponseChannel = {
                     val registration = RegistrationPayload(
@@ -86,13 +86,11 @@ class XaeroSyncClient : ClientModInitializer {
                 },
                 sendProbe = ClientConfigurationNetworking::send,
             )
-            val address = client.currentServer?.ip
-            if (address != null) {
-                sync = ClientConfigurationSync(XaeroConnectionScope.from(client.gameDirectory.toPath(), address))
-                ClientConfigurationNetworking.send(
-                    ConfigurationSyncPayload(SyncMessageCodec.encode(requireNotNull(sync).start())),
-                )
-            }
+            val address = requireNotNull(listener.serverData) { "Configuration connection has no server address." }.ip
+            sync = ClientConfigurationSync(XaeroConnectionScope.from(client.gameDirectory.toPath(), address))
+            ClientConfigurationNetworking.send(
+                ConfigurationSyncPayload(SyncMessageCodec.encode(requireNotNull(sync).start())),
+            )
             LOGGER.debug("Sent configuration probe before entering play.")
         }
     }
