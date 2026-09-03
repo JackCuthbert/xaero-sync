@@ -63,6 +63,10 @@ object WaypointSnapshotFiles {
         }
     }
 
+    fun newestModifiedAt(root: Path, snapshot: WaypointSnapshot): Instant =
+        snapshot.files.maxOfOrNull { file -> Files.getLastModifiedTime(root.resolve(file.path)).toInstant() }
+            ?: Instant.EPOCH
+
     private fun existingWaypointFiles(root: Path): List<Path> = Files.walk(root).use { paths ->
         paths.iterator().asSequence().filter(Path::isRegularFile).filter { path ->
             val relativePath = relativePath(root, path)

@@ -22,8 +22,14 @@ class ClientSyncStateStore(private val statePath: Path) {
             return WaypointSnapshot.create(observed.files, prior.updatedAt)
         }
 
-        save(ClientSyncState(scope, observed.hash, observed.updatedAt))
-        return observed
+        val timestamp = if (prior == null) {
+            WaypointSnapshotFiles.newestModifiedAt(xaeroRoot, observed)
+        } else {
+            now
+        }
+        val timestamped = WaypointSnapshot.create(observed.files, timestamp)
+        save(ClientSyncState(scope, timestamped.hash, timestamped.updatedAt))
+        return timestamped
     }
 
     fun record(scope: String, snapshot: WaypointSnapshot) =

@@ -52,6 +52,35 @@ class ClientSyncStateStoreTest {
         )
     }
 
+    @Test
+    fun `fresh empty installation starts at epoch so an existing server snapshot wins`() {
+        val store = ClientSyncStateStore(temporaryDirectory.resolve("state/fresh.json"))
+
+        val snapshot = store.observe(
+            "localhost:25565",
+            temporaryDirectory.resolve("missing-xaero-root"),
+            Instant.ofEpochSecond(100),
+        )
+
+        assertEquals(Instant.EPOCH, snapshot.updatedAt)
+        assertEquals(emptyList(), snapshot.files)
+    }
+
+    @Test
+    fun `imported files without a sidecar use their newest filesystem timestamp`() {
+        val xaeroRoot = temporaryDirectory.resolve("imported")
+        val waypoint = xaeroRoot.resolve("dim%0/mw0.txt")
+        Files.createDirectories(waypoint.parent)
+        Files.writeString(waypoint, "$HEADER\nwaypoint:Import:I:1:2:3:1:false:0:set:false:0:0:false")
+        val importedAt = Instant.ofEpochSecond(42)
+        Files.setLastModifiedTime(waypoint, java.nio.file.attribute.FileTime.from(importedAt))
+
+        val snapshot = ClientSyncStateStore(temporaryDirectory.resolve("state/imported.json"))
+            .observe("localhost:25565", xaeroRoot, Instant.ofEpochSecond(100))
+
+        assertEquals(importedAt, snapshot.updatedAt)
+    }
+
     private companion object {
         const val HEADER = "#waypoint:name:initials:x:y:z:color:disabled:type:set:" +
             "rotate_on_tp:tp_yaw:visibility_type:destination"
