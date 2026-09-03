@@ -19,6 +19,8 @@ This is whole-snapshot newest-wins behavior. If stale local data eventually reco
 
 The shared persistence record is strict versioned JSON containing the timestamp, deterministic content hash, and a Base64 copy of every raw waypoint file. Unknown JSON fields, malformed timestamps, invalid Base64, duplicate paths, ineligible paths, and hash mismatches are rejected. Xaero waypoint lines themselves are opaque bytes: future Xaero fields are preserved unchanged.
 
+Safety ceilings are 1,024 files, 512 UTF-8 bytes per relative path, 1 MiB per file, 32 MiB of decoded snapshot content, and 48 MiB for the JSON record. Absolute paths, traversal segments, and backslash platform separators are invalid on every operating system.
+
 Records are written by flushing a temporary sibling file and then replacing the previous record with an atomic move where the filesystem supports it. A missing record represents no stored snapshot; a truncated or corrupt record is an error, never an empty snapshot.
 
 ## Timestamp rules

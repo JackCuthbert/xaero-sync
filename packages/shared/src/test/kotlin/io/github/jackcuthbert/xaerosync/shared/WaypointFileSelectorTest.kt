@@ -54,6 +54,16 @@ class WaypointFileSelectorTest {
         )
     }
 
+    @Test
+    fun `rejects absolute paths and platform separators on every operating system`() {
+        val waypoint = fixture("dim%0/mw\$default_1.txt")
+
+        assertFalse(WaypointFileSelector.isEligible("/dim%0/mw\$default_1.txt", waypoint))
+        assertFalse(WaypointFileSelector.isEligible("C:/dim%0/mw\$default_1.txt", waypoint))
+        assertFalse(WaypointFileSelector.isEligible("dim%0\\mw\$default_1.txt", waypoint))
+        assertFalse(WaypointFileSelector.isEligible("C:\\dim%0\\mw\$default_1.txt", waypoint))
+    }
+
     private fun fixture(relativePath: String): ByteArray = requireNotNull(
         javaClass.getResourceAsStream("/fixtures/xaero-minimap/Multiplayer_mc.cloud.jckcthbrt.io/$relativePath"),
     )
