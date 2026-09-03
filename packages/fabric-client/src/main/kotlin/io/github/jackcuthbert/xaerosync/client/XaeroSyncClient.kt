@@ -1,6 +1,7 @@
 package io.github.jackcuthbert.xaerosync.client
 
 import io.github.jackcuthbert.xaerosync.shared.ConfigurationProbe
+import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationNetworking
@@ -20,6 +21,24 @@ class XaeroSyncClient : ClientModInitializer {
             ConfigurationProbeResponse.TYPE,
             ConfigurationProbeResponse.CODEC,
         )
+        PayloadTypeRegistry.serverboundConfiguration().register(
+            ConfigurationSyncPayload.TYPE,
+            ConfigurationSyncPayload.CODEC,
+        )
+        PayloadTypeRegistry.clientboundConfiguration().register(
+            ConfigurationSyncPayload.TYPE,
+            ConfigurationSyncPayload.CODEC,
+        )
+
+        var sync: ClientConfigurationSync? = null
+        ClientConfigurationNetworking.registerGlobalReceiver(ConfigurationSyncPayload.TYPE) { payload, context ->
+            val responses = runCatching { requireNotNull(sync).receive(SyncMessageCodec.decode(payload.bytes)) }
+                .onFailure { LOGGER.error("Configuration sync failed.", it) }
+                .getOrDefault(emptyList())
+            responses.forEach {
+                context.responseSender().sendPacket(ConfigurationSyncPayload(SyncMessageCodec.encode(it)))
+            }
+        }
 
         ClientConfigurationNetworking.registerGlobalReceiver(ConfigurationProbeResponse.TYPE) { response, _ ->
             if (ConfigurationProbe.accepts(response.protocolVersion)) {
@@ -29,17 +48,24 @@ class XaeroSyncClient : ClientModInitializer {
             }
         }
 
-        ClientConfigurationConnectionEvents.START.register { _, _ ->
+        ClientConfigurationConnectionEvents.START.register { _, client ->
             ConfigurationProbeHandshake.start(
                 registerResponseChannel = {
                     val registration = RegistrationPayload(
                         RegistrationPayload.REGISTER,
-                        listOf(ConfigurationProbeResponse.TYPE.id()),
+                        listOf(ConfigurationProbeResponse.TYPE.id(), ConfigurationSyncPayload.TYPE.id()),
                     )
                     ClientConfigurationNetworking.getSender().sendPacket(ServerboundCustomPayloadPacket(registration))
                 },
                 sendProbe = ClientConfigurationNetworking::send,
             )
+            val address = client.currentServer?.ip
+            if (address != null) {
+                sync = ClientConfigurationSync(XaeroConnectionScope.from(client.gameDirectory.toPath(), address))
+                ClientConfigurationNetworking.send(
+                    ConfigurationSyncPayload(SyncMessageCodec.encode(requireNotNull(sync).start())),
+                )
+            }
             LOGGER.debug("Sent configuration probe before entering play.")
         }
     }

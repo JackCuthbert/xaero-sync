@@ -6,6 +6,17 @@ object WaypointFileSelector {
     private val windowsAbsolutePath = Regex("""^[A-Za-z]:/.*""")
 
     fun isEligible(relativePath: String, contents: ByteArray): Boolean {
+        if (!isEligiblePath(relativePath)) {
+            return false
+        }
+
+        return contents
+            .toString(Charsets.UTF_8)
+            .lineSequence()
+            .any { line -> line.startsWith("#waypoint:") || line.startsWith("waypoint:") }
+    }
+
+    fun isEligiblePath(relativePath: String): Boolean {
         if ('\\' in relativePath || relativePath.startsWith('/') || windowsAbsolutePath.matches(relativePath)) {
             return false
         }
@@ -19,13 +30,6 @@ object WaypointFileSelector {
             return false
         }
 
-        if (!waypointFilename.matches(segments.last())) {
-            return false
-        }
-
-        return contents
-            .toString(Charsets.UTF_8)
-            .lineSequence()
-            .any { line -> line.startsWith("#waypoint:") || line.startsWith("waypoint:") }
+        return waypointFilename.matches(segments.last())
     }
 }
