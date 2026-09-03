@@ -24,36 +24,25 @@ class XaeroSyncPlugin :
     override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) = Unit
 
     override fun onPluginMessageReceived(channel: String, connection: PlayerConnection, message: ByteArray) {
-        if (channel != ConfigurationProbe.CHANNEL || connection !is PlayerConfigurationConnection) {
-            return
-        }
-
-        val version = message.decodeVarIntOrNull()
-        if (version == null || !ConfigurationProbe.accepts(version)) {
-            logger.warning("Rejected invalid configuration probe from ${connection.profile.id}.")
-            return
-        }
-
-        connection.sendPluginMessage(
-            this,
-            ConfigurationProbe.CHANNEL,
-            byteArrayOf(ConfigurationProbe.PROTOCOL_VERSION.toByte()),
-        )
-        logger.info("Configuration probe succeeded for ${connection.profile.id}.")
-    }
-
-    private fun ByteArray.decodeVarIntOrNull(): Int? {
-        if (isEmpty() || size > 5) {
-            return null
-        }
-
-        var result = 0
-        forEachIndexed { index, value ->
-            result = result or ((value.toInt() and 0x7F) shl (index * 7))
-            if (value.toInt() and 0x80 == 0) {
-                return result
+        val configurationConnection = connection as? PlayerConfigurationConnection
+        when (
+            val result = ConfigurationProbeResponder.respond(
+                channel,
+                configurationConnection != null,
+                message,
+            )
+        ) {
+            ProbeResult.Ignored -> return
+            ProbeResult.Rejected -> {
+                logger.warning("Rejected invalid configuration probe from ${configurationConnection?.profile?.id}.")
+                return
             }
+            is ProbeResult.Response -> requireNotNull(configurationConnection).sendPluginMessage(
+                this,
+                ConfigurationProbe.CHANNEL,
+                result.payload,
+            )
         }
-        return null
+        logger.info("Configuration probe succeeded for ${requireNotNull(configurationConnection).profile.id}.")
     }
 }

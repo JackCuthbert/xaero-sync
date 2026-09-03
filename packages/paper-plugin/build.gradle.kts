@@ -12,6 +12,10 @@ base {
 dependencies {
     compileOnly(libs.paper.api)
     implementation(project(":shared"))
+
+    testImplementation(kotlin("test"))
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
 }
 
 val pluginVersion = project.version.toString()

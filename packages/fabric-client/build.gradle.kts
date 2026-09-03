@@ -13,6 +13,10 @@ dependencies {
     implementation(libs.fabric.api)
     implementation(libs.fabric.language.kotlin)
     implementation(project(":shared"))
+
+    testImplementation(kotlin("test"))
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
 }
 
 val modVersion = project.version.toString()
