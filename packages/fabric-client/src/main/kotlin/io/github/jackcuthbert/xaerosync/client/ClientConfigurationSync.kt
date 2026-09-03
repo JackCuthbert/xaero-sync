@@ -7,6 +7,7 @@ import io.github.jackcuthbert.xaerosync.shared.SnapshotTransferAssembler
 import io.github.jackcuthbert.xaerosync.shared.SyncMessage
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshot
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshotFiles
+import org.slf4j.LoggerFactory
 import java.time.Clock
 
 internal class ClientConfigurationSync(
@@ -21,6 +22,13 @@ internal class ClientConfigurationSync(
     fun start(): SyncMessage.ClientMetadata {
         val snapshot = state.observe(scope.address, scope.waypointRoot, clock.instant())
         localSnapshot = snapshot
+        LOGGER.debug(
+            "Prepared configuration snapshot for {}: {} file(s), hash={}, updatedAt={}",
+            scope.address,
+            snapshot.files.size,
+            snapshot.hash.take(12),
+            snapshot.updatedAt,
+        )
         return SyncMessage.ClientMetadata(SnapshotMetadata.from(snapshot))
     }
 
@@ -65,8 +73,15 @@ internal class ClientConfigurationSync(
         }
 
         val snapshot = assembler.finish()
-        if (WaypointSnapshotFiles.hasLegacyAutomaticWorldFile(snapshot)) {
+        if (WaypointSnapshotFiles.hasLegacyAutomaticWorldFile(snapshot) &&
+            !WaypointSnapshotFiles.hasAutomaticWorldConfiguration(scope.waypointRoot)
+        ) {
             pendingAutomaticWorldDownload = snapshot
+            LOGGER.info(
+                "Deferred automatic-world download for {}: Xaero config.txt is not initialized yet (hash={}).",
+                scope.address,
+                snapshot.hash.take(12),
+            )
         } else {
             applyDownload(snapshot)
         }
@@ -78,7 +93,14 @@ internal class ClientConfigurationSync(
         val snapshot = pendingAutomaticWorldDownload ?: return null
         if (!WaypointSnapshotFiles.hasAutomaticWorldConfiguration(scope.waypointRoot)) return null
         pendingAutomaticWorldDownload = null
-        return applyDownload(snapshot)
+        return applyDownload(snapshot).also {
+            LOGGER.info(
+                "Applied deferred automatic-world download for {}: {} file(s), hash={}; reconnect required.",
+                scope.address,
+                it.files.size,
+                snapshot.hash.take(12),
+            )
+        }
     }
 
     private fun acceptUpload(message: SyncMessage.TransferAccepted): List<SyncMessage> {
@@ -96,4 +118,8 @@ internal class ClientConfigurationSync(
     }
 
     private fun reject(category: String) = listOf(SyncMessage.TransferRejected(category))
+
+    private companion object {
+        val LOGGER = LoggerFactory.getLogger("Xaero Sync")
+    }
 }

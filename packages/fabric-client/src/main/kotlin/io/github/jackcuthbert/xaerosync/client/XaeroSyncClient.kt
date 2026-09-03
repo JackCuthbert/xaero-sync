@@ -11,6 +11,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.impl.networking.RegistrationPayload
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket
 import org.slf4j.LoggerFactory
 
@@ -69,15 +71,17 @@ class XaeroSyncClient : ClientModInitializer {
                 sender.sendPacket(PlaySyncPayload(SyncMessageCodec.encode(message)))
             }
             appliedDownload?.let(requireNotNull(playUpload)::acknowledgeDownloaded)
+            if (appliedDownload != null) notifyReconnectRequired(client)
         }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
             playUpload?.close()
             playUpload = null
             sync = null
         }
-        ClientTickEvents.END_CLIENT_TICK.register {
+        ClientTickEvents.END_CLIENT_TICK.register { client ->
             sync?.applyPendingAutomaticWorldDownload()?.let { snapshot ->
                 playUpload?.acknowledgeDownloaded(snapshot)
+                notifyReconnectRequired(client)
             }
         }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
@@ -102,6 +106,15 @@ class XaeroSyncClient : ClientModInitializer {
             )
             LOGGER.debug("Sent configuration probe before entering play.")
         }
+    }
+
+    private fun notifyReconnectRequired(client: Minecraft) {
+        client.player?.sendSystemMessage(
+            Component.literal("Xaero Sync: waypoints restored; reconnect once to load them into Xaero."),
+        )
+        LOGGER.info(
+            "Automatic-world waypoint restore completed after join; reconnect is required for Xaero to reload it.",
+        )
     }
 
     private companion object {
