@@ -26,16 +26,19 @@ Before `/xaerosync restore` replaces a record, create an automatic snapshot of t
 
 All commands are player commands unless an administrator is acting on a named UUID/player, with permissions defined during implementation.
 
-- `/xaerosync status` — show server canonical timestamp/hash and snapshot count; show client sync information when that client is connected with the mod.
+- `/xaerosync` or `/xaerosync status` — show a player's backup status and clickable recovery actions.
 - `/xaerosync backup` — write a named or timestamped snapshot of the current canonical record.
-- `/xaerosync snapshots` — list available restore points.
+- `/xaerosync backups` — list readable, clickable restore points. `/xaerosync snapshots` remains as a compatibility alias.
 - `/xaerosync restore <snapshot>` — snapshot the current canonical record, restore the selected record, then instruct the player to reconnect. It never silently replaces waypoint files during live play.
 
 The exact command argument syntax and permission nodes are implementation details, but destructive restore must require a confirmation step or explicit confirmation flag.
 
-The implemented syntax is `/xaerosync <status|backup|snapshots> [uuid]` and
-`/xaerosync restore <snapshot> confirm [uuid]`. Players may omit their own UUID. Targeting another UUID requires
-`xaerosync.admin`; restore always requires the literal `confirm` argument and tells an online target to reconnect.
+Players may omit their own identity. Administrators can append an online player name or UUID to status and backup
+commands. Restore requires the explicit confirmation offered by the clickable prompt and saves the current canonical
+record before replacing it. Console and scripts can use `/xaerosync restore <snapshot> --confirm [player]`.
+`/xaerosync backups [page]` paginates restore points, and `/xsync` is available as a shorter alias. Administrators can
+use `/xaerosync diagnostics <player>` for the exact timestamp, UUID, hash, and storage size; ordinary player output
+does not expose those details.
 
 ## Failure behavior
 

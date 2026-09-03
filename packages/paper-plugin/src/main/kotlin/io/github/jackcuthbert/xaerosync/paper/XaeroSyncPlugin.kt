@@ -30,7 +30,10 @@ class XaeroSyncPlugin :
 
     override fun onEnable() {
         repository = PlayerSnapshotRepository(dataFolder.toPath())
-        requireNotNull(getCommand("xaerosync")).setExecutor(XaeroSyncCommand(this, repository))
+        val command = requireNotNull(getCommand("xaerosync"))
+        val handler = XaeroSyncCommand(this, repository)
+        command.setExecutor(handler)
+        command.tabCompleter = handler
         server.pluginManager.registerEvents(this, this)
         server.messenger.registerIncomingPluginChannel(this, ConfigurationProbe.CHANNEL, this)
         server.messenger.registerOutgoingPluginChannel(this, ConfigurationProbe.CHANNEL)

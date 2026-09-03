@@ -14,6 +14,8 @@ import java.nio.file.StandardOpenOption.WRITE
 
 /** Durably replaces a single JSON snapshot record without exposing partially-written data. */
 class AtomicSnapshotStore(private val recordPath: Path) {
+    fun size(): Long = if (Files.exists(recordPath)) Files.size(recordPath) else 0
+
     fun load(): WaypointSnapshot? {
         if (Files.notExists(recordPath)) {
             return null

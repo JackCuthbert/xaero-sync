@@ -22,7 +22,16 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
     fun status(playerId: UUID): PlayerSnapshotStatus = synchronized(lockFor(playerId)) {
         val canonical = storeFor(playerId).load()
         val snapshots = listSnapshotsUnlocked(playerId)
-        PlayerSnapshotStatus(canonical?.hash, canonical?.updatedAt, snapshots.size, snapshots.sumOf { it.bytes })
+        PlayerSnapshotStatus(
+            canonical?.hash,
+            canonical?.updatedAt,
+            canonical?.files?.size ?: 0,
+            storeFor(playerId).size(),
+            snapshots.size,
+            snapshots.sumOf {
+                it.bytes
+            },
+        )
     }
 
     fun backup(playerId: UUID): StoredSnapshot = synchronized(lockFor(playerId)) {
@@ -54,13 +63,14 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
     private fun backupUnlocked(playerId: UUID, snapshot: WaypointSnapshot): StoredSnapshot {
         val directory = snapshotDirectory(playerId)
         Files.createDirectories(directory)
-        val stem = "${clock.instant().epochSecond}-${snapshot.hash.take(12)}"
+        val createdAt = clock.instant()
+        val stem = "${createdAt.epochSecond}-${snapshot.hash.take(12)}"
         var id = stem
         var suffix = 1
         while (Files.exists(snapshotPath(playerId, id))) id = "$stem-${suffix++}"
         val path = snapshotPath(playerId, id)
         AtomicSnapshotStore(path).save(snapshot)
-        return StoredSnapshot(id, snapshot.hash, snapshot.updatedAt, Files.size(path))
+        return StoredSnapshot(id, snapshot.hash, snapshot.updatedAt, createdAt, snapshot.files.size, Files.size(path))
     }
 
     private fun listSnapshotsUnlocked(playerId: UUID): List<StoredSnapshot> {
@@ -75,6 +85,8 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
                         path.fileName.toString().removeSuffix(".json"),
                         snapshot.hash,
                         snapshot.updatedAt,
+                        snapshotCreatedAt(path),
+                        snapshot.files.size,
                         Files.size(path),
                     )
                 }
@@ -88,16 +100,29 @@ class PlayerSnapshotRepository(private val dataDirectory: Path, private val cloc
     private fun snapshotPath(playerId: UUID, snapshotId: String) =
         snapshotDirectory(playerId).resolve("$snapshotId.json")
 
+    private fun snapshotCreatedAt(path: Path): Instant =
+        path.fileName.toString().substringBefore('-').toLongOrNull()?.let(Instant::ofEpochSecond)
+            ?: Files.getLastModifiedTime(path).toInstant()
+
     private companion object {
         val SNAPSHOT_ID = Regex("[a-zA-Z0-9._-]{1,128}")
     }
 }
 
-data class StoredSnapshot(val id: String, val hash: String, val updatedAt: Instant, val bytes: Long)
+data class StoredSnapshot(
+    val id: String,
+    val hash: String,
+    val updatedAt: Instant,
+    val createdAt: Instant,
+    val fileCount: Int,
+    val bytes: Long,
+)
 
 data class PlayerSnapshotStatus(
     val canonicalHash: String?,
     val canonicalUpdatedAt: Instant?,
+    val canonicalFileCount: Int,
+    val canonicalBytes: Long,
     val snapshotCount: Int,
     val snapshotBytes: Long,
 )
