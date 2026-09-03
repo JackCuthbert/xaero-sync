@@ -51,7 +51,7 @@ class XaeroSyncClient : ClientModInitializer {
 
         ClientConfigurationNetworking.registerGlobalReceiver(ConfigurationProbeResponse.TYPE) { response, _ ->
             if (ConfigurationProbe.accepts(response.protocolVersion)) {
-                LOGGER.info("Configuration probe succeeded before entering play.")
+                LOGGER.debug("Configuration probe succeeded before entering play.")
             } else {
                 LOGGER.warn("Configuration probe received unsupported version {}.", response.protocolVersion)
             }
