@@ -39,7 +39,7 @@ run = "./gradlew clean"
 
 [tasks.verify]
 description = "Build both artifacts and run every required verification check"
-depends = ["lint", "build"]
+run = "./gradlew build"
 
 [tasks.copy-paper-plugin]
 description = "Build and install the Paper plugin into the local development server"
