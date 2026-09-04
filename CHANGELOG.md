@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.0.0...xaero-sync-v1.0.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* **ci:** avoid concurrent Gradle verification ([5f8a904](https://github.com/JackCuthbert/xaero-sync/commit/5f8a90465a5cbbc8a7358ae09a7a452e6f22077a))
+
 ## 1.0.0 (2026-09-03)
 
 
