@@ -46,61 +46,44 @@ class WaypointSnapshotFilesTest {
     }
 
     @Test
-    fun `download merges legacy automatic world into the local automatic world`() {
-        write("config.txt", "defaultMultiworldId:mw0,1,0")
-        write(
-            "dim%0/mw0,1,0_2.txt",
-            "$HEADER\nwaypoint:Local:L:1:2:3:1:false:0:set:false:0:0:false\n" +
-                "waypoint:Server:X:4:5:6:9:true:0:set:false:0:0:false",
-        )
-        val download = WaypointSnapshot.create(
+    fun `writes raw staged waypoint bytes without removing unrelated files`() {
+        write("dim%0/mw0,1,0_2.txt", "$HEADER\nwaypoint:Local:L:1:2:3:1:false:0:set:false:0:0:false")
+        val staged = WaypointSnapshot.create(
             listOf(
                 WaypointFile(
-                    "dim%0/mw\$default_1.txt",
-                    "$HEADER\nwaypoint:Server:S:4:5:6:2:false:0:set:false:0:0:false".toByteArray(),
-                ),
-                WaypointFile(
-                    "dim%0/mwcastle_1.txt",
-                    "$HEADER\nwaypoint:Castle:C:7:8:9:3:false:0:set:false:0:0:false".toByteArray(),
+                    "dim%0/mw0,1,0_2.txt",
+                    "$HEADER\nwaypoint:Server:S:4:5:6:2:false:0:server:false:0:false".toByteArray(),
                 ),
             ),
             Instant.ofEpochSecond(2),
         )
 
-        val applied = WaypointSnapshotFiles.applyDownload(temporaryDirectory, download)
+        WaypointSnapshotFiles.write(temporaryDirectory, staged)
 
-        val automaticWorld = Files.readString(temporaryDirectory.resolve("dim%0/mw0,1,0_2.txt"))
-        assertTrue(automaticWorld.contains("waypoint:Local:"))
-        assertTrue(automaticWorld.contains("waypoint:Server:"))
-        assertFalse(automaticWorld.contains("waypoint:Server:X:"))
-        assertEquals(1, automaticWorld.lineSequence().count { it.startsWith("waypoint:Server:") })
-        assertFalse(Files.exists(temporaryDirectory.resolve("dim%0/mw\$default_1.txt")))
-        assertEquals("defaultMultiworldId:mw0,1,0", Files.readString(temporaryDirectory.resolve("config.txt")))
         assertEquals(
-            "$HEADER\nwaypoint:Castle:C:7:8:9:3:false:0:set:false:0:0:false",
-            Files.readString(temporaryDirectory.resolve("dim%0/mwcastle_1.txt")),
+            staged.files.single().contents.toString(Charsets.UTF_8),
+            Files.readString(temporaryDirectory.resolve("dim%0/mw0,1,0_2.txt")),
         )
-        assertEquals(listOf("dim%0/mw0,1,0_2.txt", "dim%0/mwcastle_1.txt"), applied.files.map { it.path })
     }
 
     @Test
-    fun `download creates the local automatic world when Xaero has not created it yet`() {
-        write("config.txt", "defaultMultiworldId:mw0,1,0")
-        val download = WaypointSnapshot.create(
-            listOf(
+    fun `recognizes only legacy automatic world filenames`() {
+        assertTrue(
+            WaypointSnapshotFiles.isLegacyAutomaticWorldFile(
                 WaypointFile(
                     "dim%0/mw\$default_1.txt",
-                    "$HEADER\nwaypoint:Server:S:4:5:6:2:false:0:set:false:0:0:false".toByteArray(),
+                    "$HEADER\nwaypoint:A:A:1:2:3:1:false:0:set:false:0:0:false".toByteArray(),
                 ),
             ),
-            Instant.ofEpochSecond(2),
         )
-
-        val applied = WaypointSnapshotFiles.applyDownload(temporaryDirectory, download)
-
-        assertTrue(Files.exists(temporaryDirectory.resolve("dim%0/mw0,1,0_1.txt")))
-        assertFalse(Files.exists(temporaryDirectory.resolve("dim%0/mw\$default_1.txt")))
-        assertEquals(listOf("dim%0/mw0,1,0_1.txt"), applied.files.map { it.path })
+        assertFalse(
+            WaypointSnapshotFiles.isLegacyAutomaticWorldFile(
+                WaypointFile(
+                    "dim%0/mwcastle_1.txt",
+                    "$HEADER\nwaypoint:A:A:1:2:3:1:false:0:set:false:0:0:false".toByteArray(),
+                ),
+            ),
+        )
     }
 
     private fun write(relative: String, contents: String) {

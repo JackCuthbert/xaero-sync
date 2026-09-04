@@ -8,6 +8,7 @@ Apply these rules to every implementation change in this repository.
 - Keep follow-up fixes, tests, documentation, and formatting changes for that feature in its original feature commit by amending or squashing before hand-off.
 - Do not mix unrelated refactors, dependency upgrades, or formatting-only churn into a feature commit.
 - A commit must build and pass its relevant verification tasks on its own.
+- Commits are used as release notes. Write the subject and body for the target user: a player downloading the client mod or a server administrator downloading the server plugin. Describe the observable benefit or changed behaviour in language they understand, rather than focusing on internal implementation details.
 
 ## Code quality
 

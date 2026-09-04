@@ -76,9 +76,12 @@ class XaeroSyncClient : ClientModInitializer {
             sync = null
         }
         ClientTickEvents.END_CLIENT_TICK.register { client ->
-            sync?.applyPendingAutomaticWorldDownload()?.let { snapshot ->
-                playUpload?.acknowledgeDownloaded(snapshot)
-                notifyReconnectRequired(client)
+            sync?.takeIf(ClientConfigurationSync::hasStagedDownloads)?.let { configurationSync ->
+                XaeroAutomaticWorldTarget.current()?.let { target ->
+                    configurationSync.discoverTarget(target).takeIf(List<String>::isNotEmpty)?.let { dimensions ->
+                        notifyReconnectRequired(client, dimensions)
+                    }
+                }
             }
         }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
@@ -105,13 +108,24 @@ class XaeroSyncClient : ClientModInitializer {
         }
     }
 
-    private fun notifyReconnectRequired(client: Minecraft) {
+    private fun notifyReconnectRequired(client: Minecraft, dimensions: List<String>) {
         client.player?.sendSystemMessage(
-            Component.literal("Xaero Sync: waypoints restored; reconnect once to load them into Xaero."),
+            Component.literal(
+                "Xaero Sync: new waypoints downloaded for ${dimensions.joinToString {
+                    displayDimension(it)
+                }}; reconnect to load them.",
+            ),
         )
         LOGGER.info(
             "Automatic-world waypoint restore completed after join; reconnect is required for Xaero to reload it.",
         )
+    }
+
+    private fun displayDimension(directory: String): String = when (directory) {
+        "dim%0" -> "Overworld"
+        "dim%-1" -> "Nether"
+        "dim%1" -> "End"
+        else -> directory.removePrefix("dim%")
     }
 
     private companion object {

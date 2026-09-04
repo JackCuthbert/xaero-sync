@@ -4,7 +4,12 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.HexFormat
 
-internal data class XaeroConnectionScope(val address: String, val waypointRoot: Path, val sidecarPath: Path) {
+internal data class XaeroConnectionScope(
+    val address: String,
+    val waypointRoot: Path,
+    val sidecarPath: Path,
+    val pendingDownloadPath: Path,
+) {
     companion object {
         fun from(gameDirectory: Path, address: String): XaeroConnectionScope {
             val normalizedAddress = address.trim().lowercase()
@@ -24,6 +29,7 @@ internal data class XaeroConnectionScope(val address: String, val waypointRoot: 
                 normalizedAddress,
                 gameDirectory.resolve("xaero/minimap/Multiplayer_$xaeroName"),
                 gameDirectory.resolve(".xaero-sync/connections/$scopeHash.json"),
+                gameDirectory.resolve(".xaero-sync/connections/$scopeHash.pending.json"),
             )
         }
     }
