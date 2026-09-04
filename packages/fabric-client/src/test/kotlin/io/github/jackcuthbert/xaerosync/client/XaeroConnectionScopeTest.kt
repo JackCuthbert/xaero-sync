@@ -15,5 +15,6 @@ class XaeroConnectionScopeTest {
         assertEquals(gameDirectory.resolve("xaero/minimap/Multiplayer_example.com"), standard.waypointRoot)
         assertEquals("example.com:25565", standard.address)
         assertNotEquals(standard.sidecarPath, alternatePort.sidecarPath)
+        assertNotEquals(standard.pendingDownloadPath, alternatePort.pendingDownloadPath)
     }
 }

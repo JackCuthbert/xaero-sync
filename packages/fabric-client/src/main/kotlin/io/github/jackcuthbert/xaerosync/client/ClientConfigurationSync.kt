@@ -5,9 +5,12 @@ import io.github.jackcuthbert.xaerosync.shared.SnapshotMetadata
 import io.github.jackcuthbert.xaerosync.shared.SnapshotTransfer
 import io.github.jackcuthbert.xaerosync.shared.SnapshotTransferAssembler
 import io.github.jackcuthbert.xaerosync.shared.SyncMessage
+import io.github.jackcuthbert.xaerosync.shared.WaypointFile
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshot
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshotFiles
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.Clock
 
 internal class ClientConfigurationSync(
@@ -17,10 +20,22 @@ internal class ClientConfigurationSync(
     private val state = ClientSyncStateStore(scope.sidecarPath)
     private var localSnapshot: WaypointSnapshot? = null
     private var incoming: SnapshotTransferAssembler? = null
-    private var pendingAutomaticWorldDownload: WaypointSnapshot? = null
+    private val pendingDownloads = PendingAutomaticWorldDownloadStore(scope.pendingDownloadPath)
+    private var staged = pendingDownloads.load()
+
+    fun hasStagedDownloads(): Boolean = staged?.snapshot?.files?.isNotEmpty() == true
 
     fun start(): SyncMessage.ClientMetadata {
-        val snapshot = state.observe(scope.address, scope.waypointRoot, clock.instant())
+        applyKnownTargets()
+        val observed = state.observe(scope.address, scope.waypointRoot, clock.instant())
+        val pending = staged
+        val snapshot = if (pending == null) {
+            observed
+        } else {
+            val files = observed.files.associateByTo(linkedMapOf()) { it.path }
+            pending.snapshot.files.forEach { files[it.path] = it }
+            WaypointSnapshot.create(files.values, observed.updatedAt)
+        }
         localSnapshot = snapshot
         LOGGER.debug(
             "Prepared configuration snapshot for {}: {} file(s), hash={}, updatedAt={}",
@@ -74,37 +89,55 @@ internal class ClientConfigurationSync(
         }
 
         val snapshot = assembler.finish()
-        if (WaypointSnapshotFiles.hasLegacyAutomaticWorldFile(snapshot) &&
-            !WaypointSnapshotFiles.hasAutomaticWorldConfiguration(scope.waypointRoot)
-        ) {
-            pendingAutomaticWorldDownload = snapshot
+        val legacy = snapshot.files.filter(WaypointSnapshotFiles::isLegacyAutomaticWorldFile)
+        val oldTargets = staged?.targets.orEmpty()
+        staged = PendingAutomaticWorldDownload(
+            WaypointSnapshot.create(legacy, snapshot.updatedAt),
+            oldTargets.filterKeys { source -> legacy.any { it.path == source } },
+        )
+        pendingDownloads.save(staged)
+        WaypointSnapshotFiles.write(
+            scope.waypointRoot,
+            WaypointSnapshot.create(
+                snapshot.files.filterNot(WaypointSnapshotFiles::isLegacyAutomaticWorldFile),
+                snapshot.updatedAt,
+            ),
+        )
+        val applied = WaypointSnapshotFiles.read(scope.waypointRoot, snapshot.updatedAt)
+        state.record(scope.address, applied)
+        localSnapshot = applied
+        applyKnownTargets()
+        if (legacy.isNotEmpty()) {
             LOGGER.info(
-                "Deferred automatic-world download for {}: Xaero config.txt is not initialized yet (hash={}).",
+                "Staged automatic-world download for {}: {} dimension file(s) await Xaero initialization (hash={}).",
                 scope.address,
+                legacy.size,
                 snapshot.hash.take(12),
             )
-        } else {
-            applyDownload(snapshot)
         }
         incoming = null
         return listOf(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
     }
 
     @Synchronized
-    fun applyPendingAutomaticWorldDownload(): WaypointSnapshot? {
-        val snapshot = pendingAutomaticWorldDownload ?: return null
-        if (!WaypointSnapshotFiles.hasAutomaticWorldConfiguration(scope.waypointRoot)) return null
-        pendingAutomaticWorldDownload = null
-        return applyDownload(snapshot).also {
-            LOGGER.info(
-                "Applied deferred automatic-world download for {}: {} file(s), sourceHash={}, localHash={}; " +
-                    "reconnect required.",
-                scope.address,
-                it.files.size,
-                snapshot.hash.take(12),
-                it.hash.take(12),
-            )
+    fun discoverTarget(target: Path): List<String> {
+        val current = staged ?: return emptyList()
+        val root = scope.waypointRoot.toAbsolutePath().normalize()
+        val normalizedTarget = target.toAbsolutePath().normalize()
+        val relative = runCatching {
+            root.relativize(normalizedTarget).joinToString("/")
+        }.getOrNull() ?: return emptyList()
+        if (!normalizedTarget.startsWith(root)) {
+            return emptyList()
         }
+        val directory = relative.substringBeforeLast('/', missingDelimiterValue = "")
+        val sources = current.snapshot.files.filter { it.path.substringBeforeLast('/', "") == directory }
+        if (sources.isEmpty()) return emptyList()
+        val changed = sources.filter { current.targets[it.path] != relative }
+        if (changed.isEmpty()) return emptyList()
+        staged = current.copy(targets = current.targets + changed.associate { it.path to relative })
+        pendingDownloads.save(staged)
+        return listOf(directory)
     }
 
     private fun acceptUpload(message: SyncMessage.TransferAccepted): List<SyncMessage> {
@@ -114,11 +147,32 @@ internal class ClientConfigurationSync(
         return emptyList()
     }
 
-    private fun applyDownload(snapshot: WaypointSnapshot): WaypointSnapshot {
-        val applied = WaypointSnapshotFiles.applyDownload(scope.waypointRoot, snapshot)
+    private fun applyKnownTargets() {
+        val current = staged ?: return
+        val root = scope.waypointRoot.toAbsolutePath().normalize()
+        val files = current.snapshot.files.mapNotNull { source ->
+            val target = current.targets[source.path] ?: return@mapNotNull null
+            val destination = root.resolve(target).normalize()
+            if (destination.startsWith(root) && Files.isRegularFile(destination)) {
+                WaypointFile(target, source.contents)
+            } else {
+                null
+            }
+        }
+        if (files.isEmpty()) return
+        WaypointSnapshotFiles.write(scope.waypointRoot, WaypointSnapshot.create(files, current.snapshot.updatedAt))
+        val appliedSources = current.targets.filterValues { target -> files.any { it.path == target } }.keys
+        staged = current.copy(
+            snapshot = WaypointSnapshot.create(
+                current.snapshot.files.filterNot { it.path in appliedSources },
+                current.snapshot.updatedAt,
+            ),
+            targets = current.targets,
+        )
+        pendingDownloads.save(staged)
+        val applied = WaypointSnapshotFiles.read(scope.waypointRoot, current.snapshot.updatedAt)
         state.record(scope.address, applied)
         localSnapshot = applied
-        return applied
     }
 
     private fun reject(category: String) = listOf(SyncMessage.TransferRejected(category))

@@ -10,6 +10,7 @@ import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshot
 internal class ClientPlayUpload(private val scope: XaeroConnectionScope, private val send: (SyncMessage) -> Unit) :
     AutoCloseable {
     private val state = ClientSyncStateStore(scope.sidecarPath)
+    private val pendingDownloads = PendingAutomaticWorldDownloadStore(scope.pendingDownloadPath)
     private var pending: WaypointSnapshot? = null
     private val monitor = WaypointDirectoryMonitor(
         scope.waypointRoot,
@@ -44,12 +45,13 @@ internal class ClientPlayUpload(private val scope: XaeroConnectionScope, private
 
     fun flush() = monitor.flush()
 
-    fun acknowledgeDownloaded(snapshot: WaypointSnapshot) = monitor.acknowledge(snapshot.hash)
-
     override fun close() = monitor.close()
 
     @Synchronized
     private fun offer(snapshot: WaypointSnapshot) {
+        if (pendingDownloads.load() != null) {
+            return
+        }
         pending = snapshot
         send(SyncMessage.ClientMetadata(SnapshotMetadata.from(snapshot)))
     }
