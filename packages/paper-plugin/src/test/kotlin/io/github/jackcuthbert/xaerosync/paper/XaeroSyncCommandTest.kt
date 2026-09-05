@@ -3,6 +3,7 @@ package io.github.jackcuthbert.xaerosync.paper
 import io.github.jackcuthbert.xaerosync.shared.PlayerSnapshotRepository
 import io.github.jackcuthbert.xaerosync.shared.WaypointFile
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshot
+import io.github.jackcuthbert.xaerosync.shared.WaypointSubscriptionRepository
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.event.ClickEvent
@@ -192,8 +193,36 @@ class XaeroSyncCommandTest {
 
         fixture.command.execute(fixture.player.sender, "xaerosync", arrayOf("replace", "Friend"))
 
-        assertContains(fixture.player.text(), "don't have permission to replace")
+        assertContains(fixture.player.text(), "don't have permission to copy or follow")
         assertTrue(fixture.command.complete(fixture.player.sender, arrayOf("replace", "")).isEmpty())
+    }
+
+    @Test
+    fun `subscription explains safety and update prompt offers all actions`() {
+        val fixture = fixture()
+        val sourceId = UUID.fromString("00000000-0000-0000-0000-000000000002")
+        fixture.repository.save(sourceId, snapshot("Shared", now.minusSeconds(60)))
+
+        fixture.command.execute(fixture.player.sender, "xaerosync", arrayOf("subscribe", "Friend"))
+
+        assertContains(fixture.player.text(), "Following Friend's waypoints")
+        assertContains(fixture.player.text(), "current waypoints are unchanged")
+        assertTrue(fixture.player.clickCommands().contains("/xaerosync replace Friend"))
+        fixture.player.messages.clear()
+        fixture.command.execute(fixture.player.sender, "xaerosync", emptyArray())
+        assertContains(fixture.player.text(), "Following waypoint updates from: Friend")
+
+        fixture.repository.save(sourceId, snapshot("New shared", now))
+        fixture.subscriptions.sourceChanged(sourceId)
+
+        val prompt = fixture.runtime.notifications.single().second
+        assertContains(prompt.plainText(), "Friend has new waypoints")
+        assertContains(prompt.plainText(), "1 dimensions • 1 files • 1 waypoints")
+        val actions = prompt.clickCommands()
+        assertEquals(3, actions.size)
+        assertTrue(actions.any { it.contains(" subscription accept ") })
+        assertTrue(actions.any { it.contains(" subscription dismiss ") })
+        assertTrue(actions.any { it.contains(" subscription remind ") })
     }
 
     private fun fixture(commandPermission: Boolean = true, replacePermission: Boolean = true): Fixture {
@@ -210,7 +239,21 @@ class XaeroSyncCommandTest {
             OnlinePlayer(playerId, "TestPlayer"),
             OnlinePlayer(UUID.fromString("00000000-0000-0000-0000-000000000002"), "Friend"),
         )
-        return Fixture(repository, player, console, runtime, XaeroSyncCommand(runtime, repository, clock))
+        val subscriptions = WaypointSubscriptionManager(
+            repository,
+            WaypointSubscriptionRepository(temporaryDirectory),
+        ) { subscriberId, update ->
+            runtime.notifyPlayer(subscriberId, subscriptionPrompt(update))
+            true
+        }
+        return Fixture(
+            repository,
+            player,
+            console,
+            runtime,
+            subscriptions,
+            XaeroSyncCommand(runtime, repository, subscriptions, clock),
+        )
     }
 
     private fun snapshot(name: String, updatedAt: Instant) = WaypointSnapshot.create(
@@ -228,6 +271,7 @@ class XaeroSyncCommandTest {
         val player: SenderProbe,
         val console: SenderProbe,
         val runtime: FakeRuntime,
+        val subscriptions: WaypointSubscriptionManager,
         val command: XaeroSyncCommand,
     )
 }

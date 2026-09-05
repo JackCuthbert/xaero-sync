@@ -13,6 +13,7 @@ internal class ServerConfigurationSync(
     private val playerId: UUID,
     private val repository: PlayerSnapshotRepository,
     private val send: (SyncMessage) -> Unit,
+    private val onSaved: (UUID) -> Unit = {},
 ) {
     private var announced: SnapshotMetadata? = null
     private var incoming: SnapshotTransferAssembler? = null
@@ -76,6 +77,7 @@ internal class ServerConfigurationSync(
             return false
         }
         repository.save(playerId, snapshot)
+        onSaved(playerId)
         send(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
         return true
     }

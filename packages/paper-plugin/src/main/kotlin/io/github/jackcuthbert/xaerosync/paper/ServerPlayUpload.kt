@@ -10,6 +10,7 @@ internal class ServerPlayUpload(
     private val playerId: UUID,
     private val repository: PlayerSnapshotRepository,
     private val send: (SyncMessage) -> Unit,
+    private val onSaved: (UUID) -> Unit = {},
 ) {
     private var announced: SnapshotMetadata? = null
     private var incoming: SnapshotTransferAssembler? = null
@@ -53,6 +54,7 @@ internal class ServerPlayUpload(
             return true
         }
         repository.save(playerId, snapshot)
+        onSaved(playerId)
         send(SyncMessage.TransferAccepted(snapshot.hash, snapshot.updatedAt))
         return true
     }

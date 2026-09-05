@@ -5,12 +5,15 @@ import io.github.jackcuthbert.xaerosync.shared.ConnectionSyncProtocol
 import io.github.jackcuthbert.xaerosync.shared.PlayerSnapshotRepository
 import io.github.jackcuthbert.xaerosync.shared.SnapshotRetention
 import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
+import io.github.jackcuthbert.xaerosync.shared.WaypointSubscriptionRepository
 import io.papermc.paper.connection.PlayerConfigurationConnection
 import io.papermc.paper.connection.PlayerConnection
 import io.papermc.paper.event.connection.configuration.AsyncPlayerConnectionConfigureEvent
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerJoinEvent
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.plugin.messaging.PluginMessageListener
 import java.util.concurrent.CompletableFuture
@@ -22,6 +25,8 @@ class XaeroSyncPlugin :
     PluginMessageListener,
     Listener {
     private lateinit var repository: PlayerSnapshotRepository
+    private lateinit var subscriptions: WaypointSubscriptionManager
+    private val onlinePlayerIds = ConcurrentHashMap.newKeySet<java.util.UUID>()
     private val sessions = ConcurrentHashMap<PlayerConfigurationConnection, ServerConfigurationSync>()
     private val playUploads = ConcurrentHashMap<Player, ServerPlayUpload>()
     private val completions = ConcurrentHashMap<PlayerConfigurationConnection, CompletableFuture<Unit>>()
@@ -37,8 +42,22 @@ class XaeroSyncPlugin :
         ) { path, error ->
             logger.warning("Could not read or remove snapshot $path: ${error.message}")
         }
+        subscriptions = WaypointSubscriptionManager(
+            repository,
+            WaypointSubscriptionRepository(dataFolder.toPath()) { path, error ->
+                logger.warning("Could not read subscription record $path: ${error.message}")
+            },
+        ) { subscriberId, update ->
+            if (subscriberId !in onlinePlayerIds) return@WaypointSubscriptionManager false
+            server.scheduler.runTask(this) { _ ->
+                val player = server.getPlayer(subscriberId) ?: return@runTask
+                player.sendMessage(subscriptionPrompt(update))
+            }
+            true
+        }
+        onlinePlayerIds.addAll(server.onlinePlayers.map { it.uniqueId })
         val command = requireNotNull(getCommand("xaerosync"))
-        val handler = XaeroSyncCommand(this, repository)
+        val handler = XaeroSyncCommand(this, repository, subscriptions)
         command.setExecutor(handler)
         command.tabCompleter = handler
         server.pluginManager.registerEvents(this, this)
@@ -79,16 +98,27 @@ class XaeroSyncPlugin :
         val playerId = player.uniqueId
         storageExecutor.submit {
             val upload = playUploads.computeIfAbsent(player) {
-                ServerPlayUpload(playerId, repository) { response ->
+                ServerPlayUpload(playerId, repository, { response ->
                     server.scheduler.runTask(this) { _ ->
                         if (player.isOnline) player.sendPluginMessage(this, channel, SyncMessageCodec.encode(response))
                     }
-                }
+                }, subscriptions::sourceChanged)
             }
             if (runCatching { upload.receive(SyncMessageCodec.decode(message)) }.getOrDefault(true)) {
                 playUploads.remove(player)
             }
         }
+    }
+
+    @EventHandler
+    fun onJoin(event: PlayerJoinEvent) {
+        onlinePlayerIds += event.player.uniqueId
+        runStorage { subscriptions.subscriberJoined(event.player.uniqueId) }
+    }
+
+    @EventHandler
+    fun onQuit(event: PlayerQuitEvent) {
+        onlinePlayerIds -= event.player.uniqueId
     }
 
     @EventHandler
@@ -108,13 +138,13 @@ class XaeroSyncPlugin :
             val playerId = requireNotNull(configurationConnection.profile.id)
             storageExecutor.submit {
                 val session = sessions.computeIfAbsent(configurationConnection) {
-                    ServerConfigurationSync(playerId, repository) { response ->
+                    ServerConfigurationSync(playerId, repository, { response ->
                         configurationConnection.sendPluginMessage(
                             this,
                             ConnectionSyncProtocol.CHANNEL,
                             SyncMessageCodec.encode(response),
                         )
-                    }
+                    }, subscriptions::sourceChanged)
                 }
                 val complete = runCatching { session.receive(SyncMessageCodec.decode(message)) }
                     .onFailure {
