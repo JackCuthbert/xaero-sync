@@ -1,45 +1,43 @@
 # Project tooling. Install mise first, then run `mise install` in this directory.
-#
-# Gradle is intentionally not listed here: the checked-in Gradle wrapper
-# (`./gradlew`) will pin the exact Gradle version for every contributor.
 
 [tools]
-java = "25"
+gradle = "9.7.1"
+java = "25.0.2"
 
 [tasks.doctor]
 description = "Show the active JDK and Gradle wrapper versions"
 run = [
   "java --version",
-  "./gradlew --version",
+  "gradle --version",
 ]
 
 [tasks.build]
 description = "Compile all modules and create distributable JARs"
-run = "./gradlew build"
+run = "gradle build"
 
 [tasks.test]
 description = "Run all automated tests"
-run = "./gradlew test"
+run = "gradle test"
 
 [tasks.check]
 description = "Run verification checks and tests"
-run = "./gradlew check"
+run = "gradle check"
 
 [tasks.format]
 description = "Apply the Kotlin formatter to source and Gradle Kotlin files"
-run = "./gradlew ktlintFormat"
+run = "gradle ktlintFormat"
 
 [tasks.lint]
 description = "Check Kotlin formatting and lint rules"
-run = "./gradlew ktlintCheck"
+run = "gradle ktlintCheck"
 
 [tasks.clean]
 description = "Remove Gradle build outputs"
-run = "./gradlew clean"
+run = "gradle clean"
 
 [tasks.verify]
 description = "Build both artifacts and run every required verification check"
-run = "./gradlew build"
+run = "gradle build"
 
 [tasks.copy-paper-plugin]
 description = "Build and install the Paper plugin into the local development server"
