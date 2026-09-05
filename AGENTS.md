@@ -1,34 +1,32 @@
-# Engineering instructions
+# Xaero Sync agent guide
 
-Apply these rules to every implementation change in this repository.
+## Architecture
 
-## Commits
+- Xaero Sync is a Fabric client mod plus a Paper plugin that backs up Xaero's Minimap waypoint files.
+- The server owns the canonical whole-file snapshot. Sync is connection/change based, not live collaboration.
+- Clients without the mod must join without plugin messages or backup creation.
+- Keep protocol, validation, and persistence platform-independent in `packages/shared`; isolate Fabric and Paper code in their modules.
+- Preserve compatibility with versions pinned by the build.
 
-- One feature or independently useful change equals one commit.
-- Keep follow-up fixes, tests, documentation, and formatting changes for that feature in its original feature commit by amending or squashing before hand-off.
-- Do not mix unrelated refactors, dependency upgrades, or formatting-only churn into a feature commit.
-- A commit must build and pass its relevant verification tasks on its own.
-- Commits are used as release notes. Write the subject and body for the target user: a player downloading the client mod or a server administrator downloading the server plugin. Describe the observable benefit or changed behaviour in language they understand, rather than focusing on internal implementation details.
+## Repository map
 
-## Code quality
+- `packages/shared`, `packages/fabric-client`, `packages/paper-plugin`: shared, client, and server code respectively.
+- `docs/architecture.md` and `docs/synchronization.md`: responsibilities, scope, protocol, and conflicts.
+- `docs/client-files.md` and `docs/server.md`: Xaero file rules, persistence, and commands.
+- `docs/compatibility.md` and `docs/development.md`: version evidence, manual checks, development, and releases.
+- Read only documentation relevant to the task; this map is not a required reading list.
 
-- Use current, idiomatic Kotlin, Gradle Kotlin DSL, Fabric, and Paper practices compatible with the versions pinned by this project.
-- Introduce and enforce a formatter and linter when the Gradle build is scaffolded. Prefer tools with strong Kotlin and Gradle Kotlin DSL support, and run them through Gradle and mise tasks.
-- Treat formatter and linter failures as verification failures. Do not hand-format around automated tooling.
-- Keep platform-specific code at module boundaries; shared protocol, validation, and persistence code must remain platform-independent.
+## Tooling and tests
 
-## Testing
+- Run project tooling through Mise, never Gradle directly. Use `mise run verify` for full verification; narrower tasks include `test`, `lint`, `check`, and `build`.
+- Formatter and linter failures are verification failures.
+- Test observable behaviour, boundaries, and failures with realistic Xaero files and protocol payloads where practical.
+- Create worktrees only under the ignored `.worktrees/` directory.
 
-- Test externally observable behaviour and failure handling, not private implementation shape.
-- Add tests with each feature for its successful behaviour, relevant boundary cases, and expected failures.
-- Prefer realistic fixtures for Xaero waypoint files and protocol payloads over mocks that duplicate production implementation details.
-- Run the relevant test suite, formatter, linter, and build checks before considering a feature ready.
+## Safety and commits
 
-## Tooling and validation environment
-
-- Run project and application tooling through the repository's Mise tasks (for example, `mise run verify`, `mise run build`, and `mise run paper`). Do not invoke Gradle or other project-managed tools outside Mise.
-- Global repository and service utilities such as `git` and `gh` may be invoked directly; Mise is for application/toolchain management, not a wrapper for every shell command.
-- Create Git worktrees under the repository-local, ignored `.worktrees/` directory rather than in a system temporary directory.
-- Never modify a user-designated protected/reference Minecraft instance. If an instance is needed for testing, ask the user which disposable instance or path to use before changing it.
-- When manual Minecraft, PrismLauncher, or other GUI/window interaction is needed, ask the user to perform it and wait for confirmation. Do not automate GUI interaction or terminate user-run windows/processes.
-- When writing GitHub issues, pull requests, comments, or other user-facing project text, use normal punctuation characters directly. Never emit shell- or language-escaped text such as `\x27` where an apostrophe (`'`) is intended.
+- Never modify a protected/reference Minecraft instance. Ask for a disposable path before instance-changing tests.
+- Ask the user to perform Minecraft or PrismLauncher GUI work; do not automate or terminate user-run processes.
+- Keep each independently useful change, including tests, docs, formatting, and fixes, in one verified commit; exclude unrelated changes.
+- Write commits as player/server-admin release notes describing observable behaviour.
+- Use normal punctuation, not escaped representations such as `\x27`, in GitHub and other project-facing text.
