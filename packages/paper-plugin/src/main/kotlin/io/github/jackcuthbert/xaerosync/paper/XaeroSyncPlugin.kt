@@ -11,6 +11,7 @@ import io.papermc.paper.event.connection.configuration.AsyncPlayerConnectionConf
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.plugin.messaging.PluginMessageListener
 import java.util.concurrent.CompletableFuture
@@ -93,13 +94,22 @@ class XaeroSyncPlugin :
 
     @EventHandler
     fun onConfigure(event: AsyncPlayerConnectionConfigureEvent) {
-        if (ConnectionSyncProtocol.CHANNEL !in event.connection.listeningPluginChannels) return
         val playerId = requireNotNull(event.connection.profile.id)
+        if (UnmoddedJoinNotice.recordConfiguration(playerId, event.connection.listeningPluginChannels)) {
+            return
+        }
         runCatching {
             completions.computeIfAbsent(event.connection) { CompletableFuture() }
                 .get(15, java.util.concurrent.TimeUnit.SECONDS)
         }.onFailure { logger.warning("Configuration sync timed out or failed for $playerId.") }
         completions.remove(event.connection)
+    }
+
+    @EventHandler
+    fun onJoin(event: PlayerJoinEvent) {
+        if (UnmoddedJoinNotice.takeForJoin(event.player.uniqueId)) {
+            event.player.sendMessage(UnmoddedJoinNotice.message())
+        }
     }
 
     override fun onPluginMessageReceived(channel: String, connection: PlayerConnection, message: ByteArray) {
