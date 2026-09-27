@@ -74,4 +74,4 @@ disconnect durability comes from the watcher rather than a final packet.
 - Editing `config.txt` does not upload, download, or overwrite it.
 - A forced client termination after a waypoint edit is recovered by the watcher before termination when sufficient debounce time has elapsed.
 - Restore never changes a live client's waypoint files without an explicit reconnect.
-- Vanilla clients can join with no error or player-facing Xaero Sync message.
+- Vanilla clients can join with no error, receive one clickable Xaero Sync installation message, and trigger no sync payloads or backups.
