@@ -7,6 +7,7 @@ Use flat, human-readable JSON records under the plugin data directory:
 ```text
 plugins/XaeroSync/
 ├── players/<uuid>.json
+├── subscriptions/<subscriber-uuid>.json
 └── snapshots/<uuid>/<timestamp>-<hash>.json
 ```
 
@@ -30,6 +31,8 @@ All commands are player commands unless an administrator is acting on a named UU
 - `/xaerosync backup` — write a named or timestamped snapshot of the current canonical record.
 - `/xaerosync backups` — list readable, clickable restore points. `/xaerosync snapshots` remains as a compatibility alias.
 - `/xaerosync replace <player>` — preview and, after confirmation, replace the caller's canonical set with a known player's set. The caller's existing set is saved as a restore point first.
+- `/xaerosync subscribe <player>` — follow future changes to a known player's canonical set without changing the caller's current set.
+- `/xaerosync unsubscribe <player>` — stop receiving that player's update prompts.
 - `/xaerosync restore <snapshot>` — snapshot the current canonical record, restore the selected record, then instruct the player to reconnect. It never silently replaces waypoint files during live play.
 
 The exact command argument syntax and permission nodes are implementation details, but destructive restore must require a confirmation step or explicit confirmation flag.
@@ -44,6 +47,8 @@ does not expose those details.
 Replacing from another player requires `xaerosync.replace` (granted by default for this trusted-server feature), previews
 the source's dimensions, files, waypoint count, and timestamp, and requires `--confirm`. The replacement receives a new
 server timestamp so the existing configuration sync downloads it only when the caller reconnects.
+
+Subscriptions use the same permission and replacement safeguards. Each subscription stores the source UUID, prompt-only policy, accepted source hash, and prompt disposition. A changed source snapshot produces one clickable prompt for an online subscriber or is offered on their next join. Dismiss suppresses that snapshot, remind later permits one new prompt on the next join, and accepting verifies the exact offered hash before using the normal pre-replace backup flow. No subscription writes client files or sends an unsolicited snapshot during play.
 
 ## Failure behavior
 

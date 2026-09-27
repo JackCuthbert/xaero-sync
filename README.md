@@ -49,12 +49,24 @@ On a trusted server where you have the `xaerosync.replace` permission, run:
 
 Xaero Sync previews that player's backup before changing anything. Confirm the offered action to save your current backup and replace it with the selected set. Disconnect and reconnect to apply it locally.
 
+### Follow another player's waypoint updates
+
+After copying a trusted player's waypoints, follow their future changes with:
+
+```text
+/xaerosync subscribe PlayerName
+```
+
+Subscribing does not change your current waypoints. When that player uploads a changed set, Xaero Sync shows its timestamp and contents with clickable **Replace & reconnect**, **Dismiss**, and **Remind later** actions. A replacement happens only after confirmation, saves your current backup as a restore point, and becomes visible after reconnecting. Offline players receive pending prompts when they next join, and duplicate notifications for the same update are suppressed.
+
+Run `/xaerosync unsubscribe PlayerName` to stop following that player. Your followed players are also listed by `/xaerosync status`.
+
 ## Troubleshooting
 
 - **Nothing seems to happen:** confirm that both the server plugin and your Fabric client mod are installed, and that every dependency is for Minecraft `26.2`.
 - **Waypoints do not appear after a restore or replacement:** reconnect to the server. Xaero Sync intentionally does not rewrite live waypoint files.
 - **A server has no backup for you:** join once with Xaero Sync installed and then run `/xaerosync` after connecting.
-- **You cannot use a command:** ask the server owner about `xaerosync.command` or `xaerosync.replace` permissions.
+- **You cannot use a command:** ask the server owner about `xaerosync.command` or `xaerosync.replace` permissions. The replace permission also controls waypoint subscriptions because accepting an update replaces your backup.
 
 ## Server installation and administration
 
@@ -63,7 +75,7 @@ Xaero Sync stores each player's canonical waypoint backup under `plugins/XaeroSy
 | Permission | Default | Purpose |
 | --- | --- | --- |
 | `xaerosync.command` | Everyone | View and manage your own backup. |
-| `xaerosync.replace` | Everyone | Replace your backup from another trusted player's backup. |
+| `xaerosync.replace` | Everyone | Copy or follow another trusted player's waypoint backup. |
 | `xaerosync.admin` | Operators | Target another player and view diagnostics. |
 
 Administrators can run `/xaerosync diagnostics <player>` for the UUID, hash, exact timestamp, and storage usage of a player's backup. They can target an online player name or UUID with the applicable administrative commands. Console commands require an explicit player name or UUID.
