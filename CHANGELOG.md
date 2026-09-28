@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.1.0...xaero-sync-v1.1.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* load restored waypoints before Xaero saves its selected world ([3c5ad78](https://github.com/JackCuthbert/xaero-sync/commit/3c5ad78e385059de8770ff7b828de4a841ee4799))
+* report where downloaded waypoints are restored and loaded ([9d4dba7](https://github.com/JackCuthbert/xaero-sync/commit/9d4dba71b3015f11c57dbede39bf78dd2853db66))
+
 ## [1.1.0](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.0.1...xaero-sync-v1.1.0) (2026-09-27)
 
 
