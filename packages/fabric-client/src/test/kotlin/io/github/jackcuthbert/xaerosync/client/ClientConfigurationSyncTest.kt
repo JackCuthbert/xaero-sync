@@ -8,6 +8,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -15,6 +16,31 @@ import kotlin.test.assertTrue
 class ClientConfigurationSyncTest {
     @TempDir
     lateinit var gameDirectory: Path
+
+    @Test
+    fun `named waypoint sets restore on reconnect when Xaero has not saved the selected file`() {
+        val scope = XaeroConnectionScope.from(gameDirectory, "example.com:25565")
+        val contents = requireNotNull(javaClass.getResourceAsStream("/fixtures/named-sets.txt")).use { it.readBytes() }
+        val download = WaypointSnapshot.create(
+            listOf(WaypointFile("dim%0/mw\$default_1.txt", contents)),
+            Instant.ofEpochSecond(2),
+        )
+        assertEquals("91bdddb4eac112d60a67827340471d3bbaee82b8200244bf0bc83e6c2b14cc89", download.hash)
+        val sync = ClientConfigurationSync(scope)
+        val transfer = SnapshotTransfer.from(download)
+        sync.receive(transfer.start)
+        sync.receive(transfer.chunks.single())
+        val target = scope.waypointRoot.resolve("dim%0/mw0,1,0_2.txt")
+
+        assertEquals(listOf("dim%0"), sync.discoverTarget(target))
+        assertFalse(Files.exists(target))
+
+        val reconnected = ClientConfigurationSync(scope)
+        reconnected.start()
+
+        assertFalse(reconnected.hasStagedDownloads())
+        assertContentEquals(contents, Files.readAllBytes(target))
+    }
 
     @Test
     fun `automatic waypoints are staged during play then replaced before the next Xaero load`() {
