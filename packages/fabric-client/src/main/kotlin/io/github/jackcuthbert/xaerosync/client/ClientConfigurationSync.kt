@@ -21,6 +21,7 @@ internal class ClientConfigurationSync(
     private var incoming: SnapshotTransferAssembler? = null
     private val pendingDownloads = PendingAutomaticWorldDownloadStore(scope.pendingDownloadPath)
     private var staged = pendingDownloads.load()
+    private var rejectedTarget: Path? = null
 
     fun hasStagedDownloads(): Boolean = staged?.snapshot?.files?.isNotEmpty() == true
 
@@ -36,9 +37,10 @@ internal class ClientConfigurationSync(
             WaypointSnapshot.create(files.values, observed.updatedAt)
         }
         localSnapshot = snapshot
-        LOGGER.debug(
-            "Prepared configuration snapshot for {}: {} file(s), hash={}, updatedAt={}",
+        LOGGER.info(
+            "Prepared configuration snapshot for {} at {}: {} file(s), hash={}, updatedAt={}",
             scope.address,
+            scope.waypointRoot,
             snapshot.files.size,
             snapshot.hash.take(12),
             snapshot.updatedAt,
@@ -61,13 +63,16 @@ internal class ClientConfigurationSync(
             is SyncMessage.TransferRejected -> emptyList()
             is SyncMessage.ClientMetadata -> reject("unexpected_message")
         }
-    } catch (_: Exception) {
+    } catch (exception: Exception) {
+        LOGGER.warn("Could not apply configuration sync for ${scope.address}.", exception)
         incoming = null
         reject("client_application_failed")
     }
 
     private fun upload(): List<SyncMessage> {
-        val transfer = SnapshotTransfer.from(requireNotNull(localSnapshot) { "Sync has not started." })
+        val local = requireNotNull(localSnapshot) { "Sync has not started." }
+        val transfer = SnapshotTransfer.from(local)
+        LOGGER.info("Uploading local waypoint snapshot for {} (hash={}).", scope.address, local.hash)
         return listOf(transfer.start) + transfer.chunks
     }
 
@@ -77,6 +82,7 @@ internal class ClientConfigurationSync(
         val canonical = WaypointSnapshot.create(local.files, message.updatedAt)
         localSnapshot = canonical
         state.record(scope.address, canonical)
+        LOGGER.info("Waypoint snapshot is already synchronized for {} (hash={}).", scope.address, canonical.hash)
         return emptyList()
     }
 
@@ -88,6 +94,12 @@ internal class ClientConfigurationSync(
         }
 
         val snapshot = assembler.finish()
+        LOGGER.info(
+            "Received waypoint download for {}: files={}, hash={}",
+            scope.address,
+            snapshot.files.map { it.path },
+            snapshot.hash,
+        )
         val legacy = snapshot.files.filter(WaypointSnapshotFiles::isLegacyAutomaticWorldFile)
         val oldTargets = staged?.targets.orEmpty()
         staged = PendingAutomaticWorldDownload(
@@ -106,11 +118,11 @@ internal class ClientConfigurationSync(
         state.record(scope.address, applied)
         localSnapshot = applied
         applyKnownTargets()
-        if (legacy.isNotEmpty()) {
+        if (hasStagedDownloads()) {
             LOGGER.info(
                 "Staged automatic-world download for {}: {} dimension file(s) await Xaero initialization (hash={}).",
                 scope.address,
-                legacy.size,
+                staged?.snapshot?.files?.size,
                 snapshot.hash.take(12),
             )
         }
@@ -127,6 +139,10 @@ internal class ClientConfigurationSync(
             root.relativize(normalizedTarget).joinToString("/")
         }.getOrNull() ?: return emptyList()
         if (!normalizedTarget.startsWith(root)) {
+            if (rejectedTarget != normalizedTarget) {
+                LOGGER.warn("Xaero automatic-world target {} is outside the sync directory {}.", normalizedTarget, root)
+                rejectedTarget = normalizedTarget
+            }
             return emptyList()
         }
         val directory = relative.substringBeforeLast('/', missingDelimiterValue = "")
@@ -136,6 +152,11 @@ internal class ClientConfigurationSync(
         if (changed.isEmpty()) return emptyList()
         staged = current.copy(targets = current.targets + changed.associate { it.path to relative })
         pendingDownloads.save(staged)
+        LOGGER.info(
+            "Selected Xaero restore target {} for downloaded files {}.",
+            normalizedTarget,
+            changed.map { it.path },
+        )
         return listOf(directory)
     }
 
@@ -160,6 +181,11 @@ internal class ClientConfigurationSync(
         }
         if (files.isEmpty()) return
         WaypointSnapshotFiles.write(scope.waypointRoot, WaypointSnapshot.create(files, current.snapshot.updatedAt))
+        LOGGER.info(
+            "Applied waypoint download before world loading at {}: files={}",
+            scope.waypointRoot,
+            files.map { it.path },
+        )
         val appliedSources = current.targets.filterValues { target -> files.any { it.path == target } }.keys
         staged = current.copy(
             snapshot = WaypointSnapshot.create(
