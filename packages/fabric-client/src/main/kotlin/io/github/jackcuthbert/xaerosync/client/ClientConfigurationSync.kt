@@ -9,7 +9,6 @@ import io.github.jackcuthbert.xaerosync.shared.WaypointFile
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshot
 import io.github.jackcuthbert.xaerosync.shared.WaypointSnapshotFiles
 import org.slf4j.LoggerFactory
-import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Clock
 
@@ -153,7 +152,7 @@ internal class ClientConfigurationSync(
         val files = current.snapshot.files.mapNotNull { source ->
             val target = current.targets[source.path] ?: return@mapNotNull null
             val destination = root.resolve(target).normalize()
-            if (destination.startsWith(root) && Files.isRegularFile(destination)) {
+            if (destination.startsWith(root)) {
                 WaypointFile(target, source.contents)
             } else {
                 null

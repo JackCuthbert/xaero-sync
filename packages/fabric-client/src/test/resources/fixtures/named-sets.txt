@@ -1,0 +1,14 @@
+sets:gui.xaero_default:Points of Interest
+#
+#waypoint:name:initials:x:y:z:color:disabled:type:set:rotate_on_tp:tp_yaw:visibility_type:destination
+#
+waypoint:Idea§§ Cherry on top of hill:IC:-6021:120:16127:20:false:0:gui.xaero_default:false:0:0:false
+waypoint:Base§§ Cave:C:-4746:67:14565:9:false:0:gui.xaero_default:false:0:0:false
+waypoint:Explore§§ Ravine + Mineshaft:ER:-5445:25:15581:8:false:0:gui.xaero_default:false:0:0:false
+waypoint:Farm§§ Everything:E:-8106:250:16824:17:false:0:gui.xaero_default:false:0:0:false
+waypoint:Base§§ Sand:S:-4833:63:14339:19:false:0:gui.xaero_default:false:0:0:false
+waypoint:Base§§ Chair:C:-7580:90:16383:10:false:0:gui.xaero_default:false:0:0:false
+waypoint:Farm§§ Iron Golem:IG:-7116:120:15920:5:false:0:gui.xaero_default:false:0:0:false
+waypoint:Hamo's Nether Portal:H:-5246:89:14062:4:false:0:Points of Interest:false:0:0:false
+waypoint:Hamo's Castle:H:-5072:98:14079:11:false:0:Points of Interest:false:0:0:false
+waypoint:Wack's Sky Garden:SG:-4613:101:14840:10:false:0:Points of Interest:false:0:0:false
