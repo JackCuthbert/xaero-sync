@@ -40,6 +40,7 @@ class XaeroSyncClient : ClientModInitializer {
 
         var sync: ClientConfigurationSync? = null
         var playUpload: ClientPlayUpload? = null
+        var sampleSelectionAfterJoin = false
         ClientConfigurationNetworking.registerGlobalReceiver(ConfigurationSyncPayload.TYPE) { payload, context ->
             val responses = runCatching { requireNotNull(sync).receive(SyncMessageCodec.decode(payload.bytes)) }
                 .onFailure { LOGGER.error("Configuration sync failed.", it) }
@@ -62,6 +63,7 @@ class XaeroSyncClient : ClientModInitializer {
         }
 
         ClientPlayConnectionEvents.JOIN.register { _, sender, client ->
+            sampleSelectionAfterJoin = true
             val address = client.currentServer?.ip ?: return@register
             playUpload?.close()
             playUpload = ClientPlayUpload(
@@ -74,14 +76,17 @@ class XaeroSyncClient : ClientModInitializer {
             playUpload?.close()
             playUpload = null
             sync = null
+            sampleSelectionAfterJoin = false
         }
         ClientTickEvents.END_CLIENT_TICK.register { client ->
-            sync?.takeIf(ClientConfigurationSync::hasStagedDownloads)?.let { configurationSync ->
-                XaeroAutomaticWorldTarget.current()?.let { target ->
-                    configurationSync.discoverTarget(target).takeIf(List<String>::isNotEmpty)?.let { dimensions ->
-                        notifyReconnectRequired(client, dimensions)
-                    }
-                }
+            val configurationSync = sync ?: return@register
+            if (!sampleSelectionAfterJoin && !configurationSync.hasStagedDownloads()) return@register
+            val target = XaeroAutomaticWorldTarget.current(
+                reportSelection = sampleSelectionAfterJoin,
+            ) ?: return@register
+            sampleSelectionAfterJoin = false
+            configurationSync.discoverTarget(target).takeIf(List<String>::isNotEmpty)?.let { dimensions ->
+                notifyReconnectRequired(client, dimensions)
             }
         }
         ClientLifecycleEvents.CLIENT_STOPPING.register {
@@ -117,7 +122,7 @@ class XaeroSyncClient : ClientModInitializer {
             ),
         )
         LOGGER.info(
-            "Automatic-world waypoint restore completed after join; reconnect is required for Xaero to reload it.",
+            "Selected automatic-world restore targets after join; reconnect is required to apply downloaded waypoints.",
         )
     }
 
