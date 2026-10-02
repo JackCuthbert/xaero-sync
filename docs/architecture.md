@@ -43,6 +43,8 @@ The plugin:
 4. sends the canonical snapshot when it wins; and
 5. provides server commands and snapshot recovery.
 
+The plugin also persists opt-in player subscriptions. Canonical changes enqueue a deduplicated prompt for each subscriber; they never initiate a client transfer. An accepted prompt copies the exact offered source set into the subscriber's canonical record through the same recoverable replacement path, and the existing configuration-phase protocol applies it after reconnecting.
+
 Plugin Kotlin runtime packaging must be decided during project setup: shade Kotlin stdlib into the plugin, unless a verified shared runtime plugin is deliberately selected. Do not use an unverified Kotlin `PluginLoader` approach.
 
 ## Trust model
@@ -56,4 +58,3 @@ This is for trusted private servers. Server operators can read waypoint names an
 - Xaero target: Fabric `26.2-26.4.2`.
 - Paper compilation uses the Java version required by the selected Paper API.
 - A configuration-phase Fabric-to-Paper payload round trip is a required compatibility spike before building the production sync protocol.
-
