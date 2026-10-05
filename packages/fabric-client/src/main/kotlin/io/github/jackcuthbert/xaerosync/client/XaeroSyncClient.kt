@@ -1,6 +1,7 @@
 package io.github.jackcuthbert.xaerosync.client
 
 import io.github.jackcuthbert.xaerosync.shared.ConfigurationProbe
+import io.github.jackcuthbert.xaerosync.shared.ModVersionReport
 import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
@@ -11,6 +12,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry
 import net.fabricmc.fabric.impl.networking.RegistrationPayload
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket
@@ -37,6 +39,7 @@ class XaeroSyncClient : ClientModInitializer {
         )
         PayloadTypeRegistry.serverboundPlay().register(PlaySyncPayload.TYPE, PlaySyncPayload.CODEC)
         PayloadTypeRegistry.clientboundPlay().register(PlaySyncPayload.TYPE, PlaySyncPayload.CODEC)
+        PayloadTypeRegistry.serverboundPlay().register(VersionReportPayload.TYPE, VersionReportPayload.CODEC)
 
         var sync: ClientConfigurationSync? = null
         var playUpload: ClientPlayUpload? = null
@@ -63,6 +66,13 @@ class XaeroSyncClient : ClientModInitializer {
         }
 
         ClientPlayConnectionEvents.JOIN.register { _, sender, client ->
+            val version = FabricLoader.getInstance().getModContainer(
+                "xaero-sync",
+            ).orElseThrow().metadata.version.friendlyString
+            val versionBytes = version.toByteArray(Charsets.UTF_8)
+            if (versionBytes.size <= ModVersionReport.MAX_BYTES) {
+                sender.sendPacket(VersionReportPayload(versionBytes))
+            }
             sampleSelectionAfterJoin = true
             val address = client.currentServer?.ip ?: return@register
             playUpload?.close()
@@ -98,7 +108,11 @@ class XaeroSyncClient : ClientModInitializer {
                 registerResponseChannel = {
                     val registration = RegistrationPayload(
                         RegistrationPayload.REGISTER,
-                        listOf(ConfigurationProbeResponse.TYPE.id(), ConfigurationSyncPayload.TYPE.id()),
+                        listOf(
+                            ConfigurationProbeResponse.TYPE.id(),
+                            ConfigurationSyncPayload.TYPE.id(),
+                            VersionReportPayload.TYPE.id(),
+                        ),
                     )
                     ClientConfigurationNetworking.getSender().sendPacket(ServerboundCustomPayloadPacket(registration))
                 },
