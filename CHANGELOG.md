@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.2.0...xaero-sync-v1.2.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* label release downloads for Minecraft 26.3 ([9f18400](https://github.com/JackCuthbert/xaero-sync/commit/9f1840001a9a501baffbfc5083c00540edaf120b))
+
 ## [1.2.0](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.1.1...xaero-sync-v1.2.0) (2026-10-05)
 
 
