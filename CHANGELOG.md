@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.1.1...xaero-sync-v1.2.0) (2026-10-05)
+
+
+### Features
+
+* support Minecraft 26.3 and prompt outdated clients to update ([bc03bf7](https://github.com/JackCuthbert/xaero-sync/commit/bc03bf761c395a7ea64111584e5d3ab0c4905a63))
+
 ## [1.1.1](https://github.com/JackCuthbert/xaero-sync/compare/xaero-sync-v1.1.0...xaero-sync-v1.1.1) (2026-09-28)
 
 
