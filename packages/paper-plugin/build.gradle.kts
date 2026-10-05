@@ -6,7 +6,7 @@ plugins {
 }
 
 base {
-    archivesName.set("xaero-sync-paper-26.2")
+    archivesName.set("xaero-sync-paper-26.3")
 }
 
 dependencies {

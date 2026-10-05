@@ -23,8 +23,8 @@ mise run verify
 
 `verify` runs the formatter check, automated tests, and the complete build. The distributable files are then available at:
 
-- `packages/fabric-client/build/libs/xaero-sync-fabric-26.2-0.1.0-SNAPSHOT.jar` — send this to each player.
-- `packages/paper-plugin/build/libs/xaero-sync-paper-26.2-0.1.0-SNAPSHOT.jar` — install this on the Paper server.
+- `packages/fabric-client/build/libs/xaero-sync-fabric-26.3-0.1.0-SNAPSHOT.jar` — send this to each player.
+- `packages/paper-plugin/build/libs/xaero-sync-paper-26.3-0.1.0-SNAPSHOT.jar` — install this on the Paper server.
 
 Each player puts the Fabric JAR in their Minecraft instance's `mods/` directory. They need Minecraft `26.2`, Fabric Loader, Fabric API, Fabric Language Kotlin, and Xaero Minimap Fabric `26.4.2`.
 

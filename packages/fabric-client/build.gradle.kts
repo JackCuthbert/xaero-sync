@@ -4,7 +4,7 @@ plugins {
 }
 
 base {
-    archivesName.set("xaero-sync-fabric-26.2")
+    archivesName.set("xaero-sync-fabric-26.3")
 }
 
 loom {

@@ -42,8 +42,8 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
         run: |
-          fabric_jar="packages/fabric-client/build/libs/xaero-sync-fabric-26.2-${RELEASE_VERSION}.jar"
-          paper_jar="packages/paper-plugin/build/libs/xaero-sync-paper-26.2-${RELEASE_VERSION}.jar"
+          fabric_jar="packages/fabric-client/build/libs/xaero-sync-fabric-26.3-${RELEASE_VERSION}.jar"
+          paper_jar="packages/paper-plugin/build/libs/xaero-sync-paper-26.3-${RELEASE_VERSION}.jar"
           test -f "$fabric_jar"
           test -f "$paper_jar"
           gh release upload "$RELEASE_TAG" "$fabric_jar" "$paper_jar" --clobber

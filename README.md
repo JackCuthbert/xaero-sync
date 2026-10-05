@@ -10,7 +10,7 @@ It supports Minecraft `26.2` with Paper `26.2` build `121`, and Minecraft `26.3`
 
 Download the Fabric client JAR from [Releases](https://github.com/JackCuthbert/xaero-sync/releases) or ask your server administrator for it. Use the same Xaero Sync release as the server. In your Fabric Minecraft `26.2` or `26.3` instance, place these files in the instance's `mods` directory:
 
-- Xaero Sync's Fabric client JAR (`xaero-sync-fabric-26.2-<version>.jar`);
+- Xaero Sync's Fabric client JAR (`xaero-sync-fabric-26.3-<version>.jar`);
 - Fabric API for your Minecraft version (`26.2` or `26.3`);
 - [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin); and
 - Xaero's Minimap Fabric `26.4.2`.
@@ -21,7 +21,7 @@ The backup is scoped to the server connection, not to every server you play on. 
 
 ### Server owners
 
-Download the Paper plugin JAR from [Releases](https://github.com/JackCuthbert/xaero-sync/releases) (`xaero-sync-paper-26.2-<version>.jar`) and put it in the Paper server's `plugins` directory. Restart the server, then ask players to install the matching Fabric client JAR as described above.
+Download the Paper plugin JAR from [Releases](https://github.com/JackCuthbert/xaero-sync/releases) (`xaero-sync-paper-26.3-<version>.jar`) and put it in the Paper server's `plugins` directory. Restart the server, then ask players to install the matching Fabric client JAR as described above.
 
 Use the regular Paper JAR, not a `-plain.jar`. The distributable plugin includes the Kotlin runtime it needs.
 
