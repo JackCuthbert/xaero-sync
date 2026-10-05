@@ -2,16 +2,16 @@
 
 Xaero Sync backs up your [Xaero's Minimap](https://www.curseforge.com/minecraft/mc-mods/xaeros-minimap) waypoints to a Paper server. Install the Fabric mod on your client and the Paper plugin on the server; after that, waypoint backup and recovery happen through normal server connections.
 
-It supports Minecraft `26.2`, Xaero's Minimap Fabric `26.4.2`, Fabric Loader `0.19.3` or newer, and Paper `26.2` build `121`.
+It supports Minecraft `26.2` with Paper `26.2` build `121`, and Minecraft `26.3` with Paper `26.3` build `152` (beta). Fabric Loader `0.19.3` is the minimum; the 26.3 build dependencies were checked with Loader `0.19.5`. See [compatibility evidence](docs/compatibility.md).
 
 ## Install Xaero Sync
 
 ### Players
 
-Download the Fabric client JAR from [Releases](https://github.com/JackCuthbert/xaero-sync/releases) or ask your server administrator for it. Use the same Xaero Sync release as the server. In your Fabric Minecraft `26.2` instance, place these files in the instance's `mods` directory:
+Download the Fabric client JAR from [Releases](https://github.com/JackCuthbert/xaero-sync/releases) or ask your server administrator for it. Use the same Xaero Sync release as the server. In your Fabric Minecraft `26.2` or `26.3` instance, place these files in the instance's `mods` directory:
 
 - Xaero Sync's Fabric client JAR (`xaero-sync-fabric-26.2-<version>.jar`);
-- Fabric API for Minecraft `26.2`;
+- Fabric API for your Minecraft version (`26.2` or `26.3`);
 - [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin); and
 - Xaero's Minimap Fabric `26.4.2`.
 
@@ -51,7 +51,7 @@ Xaero Sync previews that player's backup before changing anything. Confirm the o
 
 ## Troubleshooting
 
-- **Nothing seems to happen:** confirm that both the server plugin and your Fabric client mod are installed, and that every dependency is for Minecraft `26.2`.
+- **Nothing seems to happen:** confirm that both the server plugin and your Fabric client mod are installed, and that every dependency matches Minecraft `26.2` or `26.3`.
 - **Waypoints do not appear after a restore or replacement:** reconnect to the server. Xaero Sync intentionally does not rewrite live waypoint files.
 - **A server has no backup for you:** join once with Xaero Sync installed and then run `/xaerosync` after connecting.
 - **You cannot use a command:** ask the server owner about `xaerosync.command` or `xaerosync.replace` permissions.

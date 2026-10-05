@@ -38,6 +38,11 @@ object ConnectionSyncProtocol {
     }
 }
 
+object ModVersionReport {
+    const val CHANNEL = "xaero-sync:version"
+    const val MAX_BYTES = 128
+}
+
 @Serializable
 data class SnapshotMetadata(
     val hash: String,

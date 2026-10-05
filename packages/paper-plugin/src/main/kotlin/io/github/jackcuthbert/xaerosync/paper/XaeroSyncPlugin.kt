@@ -2,6 +2,7 @@ package io.github.jackcuthbert.xaerosync.paper
 
 import io.github.jackcuthbert.xaerosync.shared.ConfigurationProbe
 import io.github.jackcuthbert.xaerosync.shared.ConnectionSyncProtocol
+import io.github.jackcuthbert.xaerosync.shared.ModVersionReport
 import io.github.jackcuthbert.xaerosync.shared.PlayerSnapshotRepository
 import io.github.jackcuthbert.xaerosync.shared.SnapshotRetention
 import io.github.jackcuthbert.xaerosync.shared.SyncMessageCodec
@@ -12,6 +13,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.plugin.messaging.PluginMessageListener
 import java.util.concurrent.CompletableFuture
@@ -49,6 +51,7 @@ class XaeroSyncPlugin :
         server.messenger.registerOutgoingPluginChannel(this, ConnectionSyncProtocol.CHANNEL)
         server.messenger.registerIncomingPluginChannel(this, ConnectionSyncProtocol.PLAY_CHANNEL, this)
         server.messenger.registerOutgoingPluginChannel(this, ConnectionSyncProtocol.PLAY_CHANNEL)
+        server.messenger.registerIncomingPluginChannel(this, ModVersionReport.CHANNEL, this)
     }
 
     override fun onDisable() {
@@ -76,6 +79,10 @@ class XaeroSyncPlugin :
     }
 
     override fun onPluginMessageReceived(channel: String, player: Player, message: ByteArray) {
+        if (channel == ModVersionReport.CHANNEL) {
+            reportClientVersion(player, message)
+            return
+        }
         if (channel != ConnectionSyncProtocol.PLAY_CHANNEL) return
         val playerId = player.uniqueId
         storageExecutor.submit {
@@ -92,12 +99,21 @@ class XaeroSyncPlugin :
         }
     }
 
+    private fun reportClientVersion(player: Player, message: ByteArray) {
+        val reportedVersion = ClientVersionNotice.decode(message) ?: return
+        val playerId = player.uniqueId
+        if (ClientVersionNotice.report(playerId, reportedVersion, pluginMeta.version)) {
+            player.sendMessage(ClientVersionNotice.message())
+        }
+    }
+
     @EventHandler
     fun onConfigure(event: AsyncPlayerConnectionConfigureEvent) {
         val playerId = requireNotNull(event.connection.profile.id)
         if (UnmoddedJoinNotice.recordConfiguration(playerId, event.connection.listeningPluginChannels)) {
             return
         }
+        ClientVersionNotice.configure(playerId, event.connection.listeningPluginChannels)
         runCatching {
             completions.computeIfAbsent(event.connection) { CompletableFuture() }
                 .get(15, java.util.concurrent.TimeUnit.SECONDS)
@@ -107,9 +123,17 @@ class XaeroSyncPlugin :
 
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
-        if (UnmoddedJoinNotice.takeForJoin(event.player.uniqueId)) {
+        val playerId = event.player.uniqueId
+        if (UnmoddedJoinNotice.takeForJoin(playerId)) {
             event.player.sendMessage(UnmoddedJoinNotice.message())
+        } else if (ClientVersionNotice.join(playerId, pluginMeta.version)) {
+            event.player.sendMessage(ClientVersionNotice.message())
         }
+    }
+
+    @EventHandler
+    fun onQuit(event: PlayerQuitEvent) {
+        ClientVersionNotice.clear(event.player.uniqueId)
     }
 
     override fun onPluginMessageReceived(channel: String, connection: PlayerConnection, message: ByteArray) {

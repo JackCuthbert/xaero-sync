@@ -1,6 +1,13 @@
 # Target-version compatibility evidence
 
-This records manual evidence for the exact v1 compatibility target: Minecraft `26.2`, Fabric Loader `0.19.3`, Fabric API `0.159.0+26.2`, Xaero Minimap Fabric `26.4.2`, and Paper `26.2` build `121`.
+The manual v1 evidence below is for Minecraft `26.2`, Fabric Loader `0.19.3`, Fabric API `0.159.0+26.2`, Xaero Minimap Fabric `26.4.2`, and Paper `26.2` build `121`. These remain minimum compatibility/build baselines.
+
+## Minecraft 26.3 automated compatibility — 2026-10-05
+
+- Build/API defaults stay at Minecraft `26.2`, Fabric API `0.159.0+26.2`, Loader `0.19.3`, and Paper `26.2.build.121-stable`. Optional Gradle properties `minecraftVersion`, `fabricApiVersion`, `fabricLoaderVersion`, and `paperApiVersion` override these for compatibility builds. Fabric metadata allows Minecraft `26.2` through `26.3` inclusive.
+- `mise exec -- gradle -PminecraftVersion=26.3 -PfabricApiVersion='0.159.0+26.3' -PfabricLoaderVersion=0.19.5 -PpaperApiVersion=26.3.build.152-beta verify` verifies the 26.3 build. [Fabric API Maven metadata](https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml) lists `0.159.0+26.2` and `0.159.0+26.3`; [Fabric Loader Maven metadata](https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml) lists `0.19.5` (latest as of 2026-08-28). [Paper API Maven metadata](https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml) lists `26.3.build.152-beta` (last updated 2026-10-05).
+- The original 26.2 API baseline remains the default and is also verified. These are automated compile/test/build checks, not manual runtime testing; no Minecraft client/server GUI testing was performed for 26.3.
+- The client advertises and reports its version over a separate bounded channel. Legacy modded clients (sync channel present, version-report channel absent) receive one clickable releases notice on join; equal/newer reporting clients stay quiet. Clients without the sync channel retain the existing unmodded notice. Sync and configuration-probe payloads are unchanged.
 
 ## Confirmed
 

@@ -10,13 +10,14 @@ base {
 }
 
 dependencies {
-    compileOnly(libs.paper.api)
+    val paperApiVersion = providers.gradleProperty("paperApiVersion").orElse(libs.versions.paper).get()
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
     implementation(project(":shared"))
 
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.paper.api)
+    testImplementation("io.papermc.paper:paper-api:$paperApiVersion")
 }
 
 val pluginVersion = project.version.toString()

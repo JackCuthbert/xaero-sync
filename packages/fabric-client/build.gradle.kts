@@ -12,9 +12,12 @@ loom {
 }
 
 dependencies {
-    minecraft("com.mojang:minecraft:${libs.versions.minecraft.get()}")
-    implementation(libs.fabric.loader)
-    implementation(libs.fabric.api)
+    val minecraftVersion = providers.gradleProperty("minecraftVersion").orElse(libs.versions.minecraft).get()
+    val fabricLoaderVersion = providers.gradleProperty("fabricLoaderVersion").orElse(libs.versions.fabric.loader).get()
+    val fabricApiVersion = providers.gradleProperty("fabricApiVersion").orElse(libs.versions.fabric.api).get()
+    minecraft("com.mojang:minecraft:$minecraftVersion")
+    implementation("net.fabricmc:fabric-loader:$fabricLoaderVersion")
+    implementation("net.fabricmc.fabric-api:fabric-api:$fabricApiVersion")
     implementation(libs.fabric.language.kotlin)
     implementation(project(":shared"))
 
