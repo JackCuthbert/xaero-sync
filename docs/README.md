@@ -10,7 +10,7 @@ Source code is organized under `packages/`: `packages/shared`, `packages/fabric-
 
 For the local PrismLauncher instance, copy `.envrc.example` to `.envrc`, adjust `XAERO_SYNC_PRISM_MODS_DIR` if needed, and run `direnv allow`. Then `mise run copy-client-mod` builds and installs the Fabric mod into that instance's `mods` directory.
 
-It supports Xaero's Minimap Fabric `26.2-26.4.2`. The product is deliberately a backup/sync tool, not a live collaborative waypoint system. A client may join without the mod; they receive one clickable message linking to Xaero Sync, and the plugin sends no sync payloads or creates backups for them.
+It supports Xaero's Minimap Fabric `26.4.2` and `26.6.2`. The product is deliberately a backup/sync tool, not a live collaborative waypoint system. A client may join without the mod; they receive one clickable message linking to Xaero Sync, and the plugin sends no sync payloads or creates backups for them.
 
 ## Build and install
 
@@ -26,7 +26,7 @@ mise run verify
 - `packages/fabric-client/build/libs/xaero-sync-fabric-26.3-0.1.0-SNAPSHOT.jar` — send this to each player.
 - `packages/paper-plugin/build/libs/xaero-sync-paper-26.3-0.1.0-SNAPSHOT.jar` — install this on the Paper server.
 
-Each player puts the Fabric JAR in their Minecraft instance's `mods/` directory. They need Minecraft `26.2`, Fabric Loader, Fabric API, Fabric Language Kotlin, and Xaero Minimap Fabric `26.4.2`.
+Each player puts the Fabric JAR in their Minecraft instance's `mods/` directory. They need Minecraft `26.2`, Fabric Loader, Fabric API, Fabric Language Kotlin, and Xaero Minimap Fabric `26.4.2` or `26.6.2`.
 
 Put the Paper JAR in the server's `plugins/` directory and restart Paper `26.2` build `121`. Do not use the similarly named `-plain.jar`: it does not include the Kotlin runtime required by the plugin.
 

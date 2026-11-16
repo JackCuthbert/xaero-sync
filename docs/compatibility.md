@@ -2,6 +2,13 @@
 
 The manual v1 evidence below is for Minecraft `26.2`, Fabric Loader `0.19.3`, Fabric API `0.159.0+26.2`, Xaero Minimap Fabric `26.4.2`, and Paper `26.2` build `121`. These remain minimum compatibility/build baselines.
 
+## Xaero's Minimap 26.6.2 compatibility — 2026-11-16
+
+- Inspected the [Modrinth](https://modrinth.com/mod/xaeros-minimap) Fabric jars `fabric-26.2-26.6.2` and `fabric-26.3-26.6.2` (published 2026-10-25) with `javap`, against the `fabric-26.2-26.4.2` baseline.
+- Every class and method that `XaeroAutomaticWorldTarget` reflects on exists with the same signature: `XaeroMinimapSession.getCurrentSession`/`getMinimapProcessor`, `MinimapProcessor.getSession`, `MinimapSession.getWorldManager`/`getWorldManagerIO`, `MinimapWorldManager.getAutoWorld`/`getCurrentWorld`, and the single one-argument `MinimapWorldManagerIO.getWorldFile` returning `Path`.
+- `MinimapWorldManagerIO` uses the same strings and calls as 26.4.2. `MinimapDimensionHelper`, `MinimapWorldContainer`, and `MinimapWorldRootContainer` are byte-identical, so the `dim%*/mw*.txt` layout is unchanged.
+- Dependencies are unchanged from 26.4.2, including `xaerolib >=1.0`. No manual Minecraft client testing was performed.
+
 ## Fabric Loader 0.20.1 automated compatibility — 2026-11-16
 
 - `mise exec -- gradle -PminecraftVersion=26.3 -PfabricApiVersion='0.166.2+26.3' -PfabricLoaderVersion=0.20.1 -PpaperApiVersion=26.3.build.253-stable build` passes. [Fabric Loader Maven metadata](https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml) lists `0.20.1` as the latest release (last updated 2026-10-19); [Fabric API Maven metadata](https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml) lists `0.166.2+26.3`; [Paper API Maven metadata](https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml) lists `26.3.build.253-stable`.
