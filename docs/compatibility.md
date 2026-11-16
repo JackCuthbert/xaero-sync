@@ -2,6 +2,11 @@
 
 The manual v1 evidence below is for Minecraft `26.2`, Fabric Loader `0.19.3`, Fabric API `0.159.0+26.2`, Xaero Minimap Fabric `26.4.2`, and Paper `26.2` build `121`. These remain minimum compatibility/build baselines.
 
+## Fabric Loader 0.20.1 automated compatibility — 2026-11-16
+
+- `mise exec -- gradle -PminecraftVersion=26.3 -PfabricApiVersion='0.166.2+26.3' -PfabricLoaderVersion=0.20.1 -PpaperApiVersion=26.3.build.253-stable build` passes. [Fabric Loader Maven metadata](https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml) lists `0.20.1` as the latest release (last updated 2026-10-19); [Fabric API Maven metadata](https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml) lists `0.166.2+26.3`; [Paper API Maven metadata](https://repo.papermc.io/repository/maven-public/io/papermc/paper/paper-api/maven-metadata.xml) lists `26.3.build.253-stable`.
+- The existing `fabricloader >=0.19.3` dependency already admits Loader `0.20.1`; metadata is unchanged. Build defaults are unchanged. No manual Minecraft client/server testing was performed.
+
 ## Minecraft 26.3 automated compatibility — 2026-10-05
 
 - Build/API defaults stay at Minecraft `26.2`, Fabric API `0.159.0+26.2`, Loader `0.19.3`, and Paper `26.2.build.121-stable`. Optional Gradle properties `minecraftVersion`, `fabricApiVersion`, `fabricLoaderVersion`, and `paperApiVersion` override these for compatibility builds. Fabric metadata allows Minecraft `26.2` through `26.3` inclusive.
