@@ -13,7 +13,7 @@ Download the Fabric client JAR from [Releases](https://github.com/JackCuthbert/x
 - Xaero Sync's Fabric client JAR (`xaero-sync-fabric-26.3-<version>.jar`);
 - Fabric API for your Minecraft version (`26.2` or `26.3`);
 - [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin); and
-- Xaero's Minimap Fabric `26.4.2`.
+- Xaero's Minimap Fabric `26.4.2` or `26.6.2`.
 
 Start Minecraft and join the server. There is no Xaero Sync screen to configure. On your first connection, Xaero Sync compares the waypoint backup on the server with the waypoint files on this computer and keeps the newer set. If no server backup exists, your local waypoints are uploaded.
 
